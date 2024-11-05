@@ -12,12 +12,12 @@ local optionsLoaded, options = pcall(require, "Dropbox Tracker.options")
 local optionsFileName = "addons/Dropbox Tracker/options.lua"
 local ConfigurationWindow
 
---package.path = './addons/?/init.lua;./addons/?.lua'
+local origPackagePath = package.path
 package.path = './addons/Dropbox Tracker/lua-xtype/src/?.lua;' .. package.path
 package.path = './addons/Dropbox Tracker/MGL/src/?.lua;' .. package.path
 local xtype = require("xtype")
 local mgl = require("MGL")
-
+package.path = origPackagePath
 
 local function SetDefaultValue(Table, Index, Value)
     Table[Index] = lib_helpers.NotNilOrDefault(Table[Index], Value)
@@ -661,7 +661,7 @@ local function newInvToolLookupTable()
         },
         [0x07] = { [0x00] = {0, 10, "Telepipe"} },
         [0x08] = { [0x00] = {0, 10, "TrapVision"} },
-        [0x09] = { [0x00] = {0, -1, "ScapeDoll"} },
+        [0x09] = { [0x00] = {0, 1, "ScapeDoll"} },
         [0x0A] = {
             [0x00] = {0, 99, "Monogrinder"},
             [0x01] = {0, 99, "Digrinder"},
@@ -1228,17 +1228,19 @@ local function PresentBoxTracker(item,trkIdx,curCount)
 
         local textW       = imgui.CalcTextSize(textC)
 
-        -- if cateTabl.showName then
-            imgui.SetCursorPosX( (windowW - textW) * 0.5 )
-            imgui.Text(textC)
-        -- else
-        --     imgui.Text("")
-        -- end
+        imgui.SetCursorPosX( (windowW - textW) * 0.5 )
+        imgui.Text(textC)
         
         local cursorPosY = imgui.GetCursorPosY() -- Don't reposition, need cursor pos after imgui.Text()
         sizeX = clampVal( sizeX, 0,  windowWP - 2 )
-        sizeY = clampVal( sizeY, 0,  windowWP - cursorPosY )
         
+        -- unfinished code to draw box around object
+        --local sizePixUp   = computePixelCoordinates(item.pos3 + mgl.vec3(0, 3.4,0), eyeWorld, eyeDir, determinantScr)
+        --local sizePixDown = computePixelCoordinates(item.pos3 + mgl.vec3(0,-1.0,0), eyeWorld, eyeDir, determinantScr)
+        --sizeY = math.abs( sizePixUp.y - sizePixDown.y )
+
+        sizeY = clampVal( sizeY, 0,  windowH - cursorPosY )
+
         if cateTabl.showBox and cateTabl.enabled and not item.screenShouldNotShow then
             if cateTabl.useCustomColor then
                 TrackerColor = shiftHexColor(cateTabl.customBorderColor)
@@ -1439,7 +1441,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.0.1",
+        version = "0.0.2",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
