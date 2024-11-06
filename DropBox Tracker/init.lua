@@ -72,6 +72,8 @@ local function LoadOptions()
         SetDefaultValue( options[trkIdx], "W", 150 )
         SetDefaultValue( options[trkIdx], "H", 90 )
         SetDefaultValue( options[trkIdx], "AlwaysAutoResize", "" )
+        SetDefaultValue( options[trkIdx], "customFontScaleEnabled", false )
+        SetDefaultValue( options[trkIdx], "fontScale", 1.0 )
         SetDefaultValue( options[trkIdx], "TransparentWindow", false )
         SetDefaultValue( options[trkIdx], "customTrackerColorEnable", false )
         SetDefaultValue( options[trkIdx], "customTrackerColorMarker", 0xFFFF9900 )
@@ -158,6 +160,8 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "HitMin", 40)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
+        SetDefaultValue(options[trkIdx][cate], "includeHit", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", false)
@@ -165,6 +169,7 @@ local function LoadOptions()
         cate = "MaxSocketCommonArmor"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeSlots", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", false)
@@ -180,6 +185,8 @@ local function LoadOptions()
         cate = "RareWeapon"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
+        SetDefaultValue(options[trkIdx][cate], "includeHit", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -188,6 +195,8 @@ local function LoadOptions()
         cate = "ESWeapon"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
+        SetDefaultValue(options[trkIdx][cate], "includeHit", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 6)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -196,6 +205,9 @@ local function LoadOptions()
         cate = "RareArmor"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeStats", true)
+        SetDefaultValue(options[trkIdx][cate], "includeSlots", true)
+        SetDefaultValue(options[trkIdx][cate], "highlightMaxStats", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -204,6 +216,8 @@ local function LoadOptions()
         cate = "RareBarrier"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "includeStats", true)
+        SetDefaultValue(options[trkIdx][cate], "highlightMaxStats", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -581,6 +595,7 @@ local toolLookupTable = {}
 local invToolLookupTable = {}
 local resolutionWidth = {}
 local resolutionHeight = {}
+local trackerBox = {}
 local screenFov = nil
 local aspectRatio = nil
 local eyeWorld    = nil
@@ -730,15 +745,6 @@ local function getCameraDirection()
     }
 end
 
-local function NormalizeVec3(vec3)
-    local vec3Dist = math.sqrt(vec3.x * vec3.x + vec3.y * vec3.y + vec3.z * vec3.z)
-    return {
-        x = vec3.x / vec3Dist,
-        y = vec3.y / vec3Dist,
-        z = vec3.z / vec3Dist,
-    }
-end
-
 local function clampVal(clamp, min, max)
     return clamp < min and min or clamp > max and max or clamp
 end
@@ -882,6 +888,129 @@ local function ItemAppendVisibilityData(cate,item,trkIdx)
     item.cate = cate
 end
 
+local function AddWeaponAtrributes(item,showAtribs,showHit)
+    local colorGrey = {1.0, 0.4706, 0.4706, 0.4706}
+    local wNameCount = 0
+    local attribs = 0
+    local hitItr = 5
+    local attribStart = 1
+
+    if item.wName and type(options) == "table" then
+        wNameCount = table.getn(item.wName)
+    else
+        item.wName = {}
+    end
+
+    if showAtribs then
+        table.insert(item.wName, { " [", nil })
+        table.insert(item.wName, { }) -- native
+        table.insert(item.wName, { "/", nil })
+        table.insert(item.wName, { }) -- beast
+        table.insert(item.wName, { "/", nil })
+        table.insert(item.wName, { }) -- machine
+        table.insert(item.wName, { "/", nil })
+        table.insert(item.wName, { }) -- dark
+        if showHit then
+            attribs = 5
+            table.insert(item.wName, { "|", nil })
+            table.insert(item.wName, { }) -- hit
+        else
+            attribs = 4
+        end
+        table.insert(item.wName, { "]", nil })
+    else
+        if showHit then
+            attribs = 1
+            hitItr = 1
+            attribStart = 5
+            table.insert(item.wName, { " [", nil })
+            table.insert(item.wName, { }) -- hit
+            table.insert(item.wName, { "]", nil })
+        end
+    end
+
+    for i=1, attribs, 1 do
+        local attribIdx = i+attribStart
+        if item.weapon.stats[attribIdx] > 0 then
+            if i == hitItr then
+                local clr, pL
+                if item.weapon.stats[attribIdx] < 60 then
+                    pL = item.weapon.stats[attribIdx] / 60
+                    clr = { 1.0, Lerp(pL, 0, 1.0), 1.0, 0.0 }
+                else
+                    pL = (item.weapon.stats[attribIdx] - 60) / 40
+                    clr = { 1.0, 1.0, Lerp(pL, 1.0, 0), 0.0 }
+                end
+                item.wName[i*2+wNameCount] = { item.weapon.stats[attribIdx],clr }
+            else
+                item.wName[i*2+wNameCount] = { item.weapon.stats[attribIdx], nil }
+            end
+        elseif item.weapon.stats[i+1] == 0 then
+            item.wName[i*2+wNameCount] = { item.weapon.stats[attribIdx], colorGrey }
+        else
+            item.wName[i*2+wNameCount] = { item.weapon.stats[attribIdx], colorGrey }
+        end
+    end
+end
+local function AddArmorStats(item,showStats,showSlots,highlightMaxStats)
+    local colorGrey = {1.0, 0.4706, 0.4706, 0.4706}
+
+    if not item.wName or type(options) ~= "table" then
+        item.wName = {}
+    end
+
+    if showStats then
+        local nClr,dfpClr,dfpMaxClr, evpClr,evpMaxClr
+        if highlightMaxStats and item.armor.dfp == item.armor.dfpMax and item.armor.evp == item.armor.evpMax and (item.armor.dfpMax > 0 or item.armor.evpMax > 0) then
+            nClr = {1.0, 1.0, 0.8, 0.0}
+        end
+        if item.armor.dfp == 0 then
+            dfpClr = colorGrey
+        else
+            if highlightMaxStats and item.armor.dfp == item.armor.dfpMax then
+                dfpClr = {1.0, 1.0, 0.8, 0.0}
+            else
+                dfpClr = {1.0, 0.15686, 0.8, 0.4}
+            end
+        end
+        if item.armor.dfpMax == 0 then
+            dfpMaxClr = colorGrey
+        else
+            dfpMaxClr = dfpClr
+        end
+        if item.armor.evp == 0 then
+            evpClr = colorGrey
+        else
+            if highlightMaxStats and item.armor.evp == item.armor.evpMax then
+                evpClr = {1.0, 1.0, 0.8, 0.0}
+            else
+                evpClr = {1.0, 0.15686, 0.8, 0.4}
+            end
+        end
+        if item.armor.evpMax == 0 then
+            evpMaxClr = colorGrey
+        else
+            evpMaxClr = evpClr
+        end
+        item.wName[1][2] = nClr
+        table.insert(item.wName, { " [", nil })
+        table.insert(item.wName, { item.armor.dfp, dfpClr }) -- dfp
+        table.insert(item.wName, { "/", nil })
+        table.insert(item.wName, { item.armor.dfpMax, dfpMaxClr }) -- dfpMax
+        table.insert(item.wName, { "|", nil })
+        table.insert(item.wName, { item.armor.evp, evpClr }) -- evp
+        table.insert(item.wName, { "/", nil })
+        table.insert(item.wName, { item.armor.evpMax, evpMaxClr }) -- evpMax
+        table.insert(item.wName, { "]", nil })
+    end
+
+    if showSlots then
+        table.insert(item.wName, { " [", nil })
+        table.insert(item.wName, { item.armor.slots .. "S", {1.0, 1.0, 1.0, 0.0} }) -- slots
+        table.insert(item.wName, { "]", nil })
+    end
+
+end
 
 local function ProcessWeapon(item, floor, trkIdx)
 
@@ -889,19 +1018,27 @@ local function ProcessWeapon(item, floor, trkIdx)
 
     if item.weapon.isSRank == false then
         if item_cfg ~= nil and item_cfg[1] ~= 0 then
+            item.wName = { { item.name, nil } }
+            AddWeaponAtrributes(item,options[trkIdx]["RareWeapon"].includeAtrributes,options[trkIdx]["RareWeapon"].includeHit)
             ItemAppendVisibilityData( options[trkIdx]["RareWeapon"], item, trkIdx )
         elseif floor then
             -- Hide weapon drops with less then xxHit (40 default) untekked
             if item.weapon.stats[6] >= options[trkIdx].HighHitCommonWeapon.HitMin then
+                item.wName = { { item.name, nil } }
+                AddWeaponAtrributes(item,options[trkIdx]["HighHitCommonWeapon"].includeAtrributes,options[trkIdx]["HighHitCommonWeapon"].includeHit)
                 ItemAppendVisibilityData( options[trkIdx]["HighHitCommonWeapon"], item, trkIdx )
             -- Show Claire's Deal 5 items
             elseif options[trkIdx].ClairesDeal.enabled and clairesDealLoaded and lib_claires_deal.IsClairesDealItem(item) then
                 ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
             elseif item.weapon.stats[6] < options[trkIdx].HighHitCommonWeapon.HitMin then
+                item.wName = { { item.name, nil } }
+                AddWeaponAtrributes(item,options[trkIdx]["LowHitCommonWeapon"].includeAtrributes,options[trkIdx]["LowHitCommonWeapon"].includeHit)
                 ItemAppendVisibilityData( options[trkIdx]["LowHitCommonWeapon"], item, trkIdx )
             end            
         end
     else
+        item.wName = { { item.name, nil } }
+        AddWeaponAtrributes(item,options[trkIdx]["LowHitCommonWeapon"].includeAtrributes,options[trkIdx]["LowHitCommonWeapon"].includeHit)
         ItemAppendVisibilityData( options[trkIdx]["ESWeapon"], item, trkIdx )
     end
 end
@@ -910,15 +1047,21 @@ local function ProcessFrame(item, floor, trkIdx)
     local item_cfg = lib_items_list.t[item.hex]
 
     if item_cfg ~= nil and item_cfg[1] ~= 0 then
+        item.wName = { { item.name, nil } }
+        AddArmorStats(item, options[trkIdx]["RareArmor"].includeStats,options[trkIdx]["RareArmor"].includeSlots,options[trkIdx]["RareArmor"].highlightMaxStats)
         ItemAppendVisibilityData( options[trkIdx]["RareArmor"], item, trkIdx )
     elseif floor then
         -- Show 4 socket armors
         if item.armor.slots == 4 then
+            item.wName = { { item.name, nil } }
+            AddArmorStats(item, options[trkIdx]["MaxSocketCommonArmor"].includeStats,options[trkIdx]["MaxSocketCommonArmor"].includeSlots,options[trkIdx]["MaxSocketCommonArmor"].highlightMaxStats)
             ItemAppendVisibilityData( options[trkIdx]["MaxSocketCommonArmor"], item, trkIdx )
             -- Show Claire's Deal 5 items
         elseif options[trkIdx].ClairesDeal.enabled and clairesDealLoaded and lib_claires_deal.IsClairesDealItem(item) then
             ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
         else
+            item.wName = { { item.name, nil } }
+            AddArmorStats(item, options[trkIdx]["CommonArmor"].includeStats,options[trkIdx]["CommonArmor"].includeSlots,options[trkIdx]["CommonArmor"].highlightMaxStats)
             ItemAppendVisibilityData( options[trkIdx]["CommonArmor"], item, trkIdx )
         end
     end
@@ -928,12 +1071,16 @@ local function ProcessBarrier(item, floor, trkIdx)
     local item_cfg = lib_items_list.t[item.hex]
 
     if item_cfg ~= nil and item_cfg[1] ~= 0 then
+        item.wName = { { item.name, nil } }
+        AddArmorStats(item, options[trkIdx]["RareBarrier"].includeStats,false,options[trkIdx]["RareBarrier"].highlightMaxStats)
         ItemAppendVisibilityData( options[trkIdx]["RareBarrier"], item, trkIdx )
     elseif floor then
         -- Show Claire's Deal 5 items
         if options[trkIdx].ClairesDeal.enabled and clairesDealLoaded and lib_claires_deal.IsClairesDealItem(item) then
             ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
         else
+            item.wName = { { item.name, nil } }
+            AddArmorStats(item, options[trkIdx]["RareBarrier"].includeStats,false,options[trkIdx]["RareBarrier"].highlightMaxStats)
             ItemAppendVisibilityData( options[trkIdx]["CommonBarrier"], item, trkIdx )
         end
     end
@@ -974,7 +1121,11 @@ local function ProcessTool(item, floor, trkIdx)
     if floor then
         -- Process Technique Disks
         if item.data[2] == 0x02 then
-            item.wName = item.name .. " LV" .. item.tool.level
+            item.wName = {
+                { item.name, nil },
+                { " Lv", nil },
+                { item.tool.level, nil },
+            }
             -- Is Reverser/Ryuker
             if item.data[5] == 0x11 then
                 ItemAppendVisibilityData( options[trkIdx]["TechReverser"], item, trkIdx )
@@ -1070,7 +1221,11 @@ local function ProcessTool(item, floor, trkIdx)
 end
 local function ProcessMeseta(item, trkIdx)
     if options.ignoreMeseta == false then
-        item.wName = item.meseta .. " " .. item.name
+        item.wName = {
+            { item.meseta, nil },
+            { " ", nil },
+            { item.name, nil },
+        }
         if item.meseta >= options[trkIdx].Meseta.MinAmount then
             ItemAppendVisibilityData( options[trkIdx]["Meseta"], item, trkIdx )
         end
@@ -1159,57 +1314,79 @@ local function updateInvToolLookupTable()
             invToolLookupTable[item.data[2]][item.data[3]] ~= nil and 
             invToolLookupTable[item.data[2]][item.data[3]][2]
         then
-            if item.tool.count > 0 then
+            if item.tool and item.tool.count > 0 then
                 invToolLookupTable[item.data[2]][item.data[3]][1] = item.tool.count
             end
         end
     end
 end
+local function PrintWText(wText)
+    for i=1,table.getn(wText),1 do
+        local clr = wText[i][2]
+        if i ~= 1 then imgui.SameLine(0, 0) end
+        if clr then
+            imgui.TextColored(clr[2], clr[3], clr[4], clr[1], wText[i][1])
+        else
+            imgui.Text(wText[i][1])
+        end
+    end
+end
+
+local function getUnWText(wText)
+    local str = ""
+    for i=1,table.getn(wText),1 do
+        str = str .. wText[i][1]
+    end
+    return str
+end
+
+local function getWText(wText)
+    if wText then
+        return wText
+    else
+        return { {item.name, nil} }
+    end
+end
 
 local function PresentBoxTracker(item,trkIdx,curCount)
     local textC = ""
-    local function setItemNameText()
-        textC = item.name
-        if item.wName then
-            textC = item.wName
-        end
-    end
+
     if item.cate then
         local windowW,windowH = imgui.GetWindowSize()
         local padding     = 6
-        local sizeX       = options[trkIdx].boxSizeX - padding
-        local sizeY       = options[trkIdx].boxSizeY
+        local sizeX       = trackerBox.sizeX - padding
+        local sizeY       = trackerBox.sizeY
         local cateTabl    = item.cate
         local windowWP    = windowW - padding
 
         if options[trkIdx].showNameOverride then
             if curCount <= options[trkIdx].showNameClosestItemsNum then
                 if options[trkIdx].showNameClosestDist <= 0 then
-                    setItemNameText()
+                    textC = getWText(item.wName)
                 elseif item.curPlayerDistance <= options[trkIdx].showNameClosestDist then
-                    setItemNameText()
+                    textC = getWText(item.wName)
                 end
             end
         else
             if curCount <= options[trkIdx].showNameClosestItemsNum then
                 if options[trkIdx].showNameClosestDist <= 0 then
-                    setItemNameText()
+                    textC = getWText(item.wName)
                 else
                     if item.curPlayerDistance <= options[trkIdx].showNameClosestDist and not item.screenShouldNotShow then
-                        setItemNameText()
+                        textC = getWText(item.wName)
                     elseif cateTabl.showName and not item.screenShouldNotShow then
-                        setItemNameText()
+                        textC = getWText(item.wName)
                     end
                 end
             elseif cateTabl.showName and not item.screenShouldNotShow then
-                setItemNameText()
+                textC = getWText(item.wName)
             end
         end
 
-        local textW       = imgui.CalcTextSize(textC)
+        local textW = imgui.CalcTextSize(getUnWText(textC))
 
         imgui.SetCursorPosX( (windowW - textW) * 0.5 )
-        imgui.Text(textC)
+        PrintWText(textC)
         
         local cursorPosY = imgui.GetCursorPosY() -- Don't reposition, need cursor pos after imgui.Text()
         sizeX = clampVal( sizeX, 0,  windowWP - 2 )
@@ -1251,6 +1428,33 @@ local function PresentBoxTracker(item,trkIdx,curCount)
     end
 end
 
+local function calcScreenResolutions(trkIdx)
+    if options.customScreenResEnabled then
+        resolutionWidth.val     = options.customScreenResX
+        resolutionHeight.val    = options.customScreenResY
+    else
+        resolutionWidth.val     = lib_helpers.GetResolutionWidth()
+        resolutionHeight.val    = lib_helpers.GetResolutionHeight()
+    end
+    aspectRatio                 = resolutionWidth.val / resolutionHeight.val
+    resolutionWidth.half        = resolutionWidth.val * 0.5
+    resolutionHeight.half       = resolutionHeight.val * 0.5
+    resolutionWidth.clampRescale  = resolutionWidth.val  * 1
+    resolutionHeight.clampRescale = resolutionHeight.val * 1
+
+    trackerBox.sizeX            = options[trkIdx].boxSizeX
+    trackerBox.sizeHalfX        = options[trkIdx].boxSizeX * 0.5
+    trackerBox.sizeY            = options[trkIdx].boxSizeY
+    trackerBox.sizeHalfY        = options[trkIdx].boxSizeY * 0.5
+    trackerBox.offsetX          = options[trkIdx].boxOffsetX
+    trackerBox.offsetY          = options[trkIdx].boxOffsetY
+
+    resolutionWidth.clampBoxLowest  = -resolutionWidth.half  + trackerBox.sizeHalfX
+    resolutionWidth.clampBoxHighest =  resolutionWidth.half  - trackerBox.sizeHalfX
+    resolutionHeight.clampBoxLowest = -resolutionHeight.half + trackerBox.sizeHalfY
+    resolutionHeight.clampBoxHighest=  resolutionHeight.half - trackerBox.sizeHalfY
+end
+calcScreenResolutions("tracker1")
 
 local function present()
     -- If the addon has never been used, open the config window
@@ -1261,7 +1465,6 @@ local function present()
     end
     ConfigurationWindow.Update()
 
-    local configChanged = ConfigurationWindow.changed
     if ConfigurationWindow.changed then
         ConfigurationWindow.changed = false
         if options.numTrackers > lastnumTrackers then
@@ -1269,6 +1472,7 @@ local function present()
             lastnumTrackers = options.numTrackers
         end
         updateToolLookupTable()
+        calcScreenResolutions("tracker1")
         SaveOptions(options)
         -- Update the delay too
         update_delay = options.updateThrottle
@@ -1281,9 +1485,9 @@ local function present()
 
     --- Update timer for update throttle
     current_time = pso.get_tick_count()
---needed?
-local myFloor = lib_characters.GetCurrentFloorSelf()
---needed?
+-- --needed?
+-- local myFloor = lib_characters.GetCurrentFloorSelf()
+-- --needed?
 
     playerSelfAddr    = lib_characters.GetSelf()
     playerSelfCoords  = GetPlayerCoordinates(playerSelfAddr)
@@ -1291,21 +1495,9 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
     pCoord            = mgl.vec3(playerSelfCoords.x,playerSelfCoords.y,playerSelfCoords.z)
     cameraCoords      = getCameraCoordinates()
     cameraDirs        = getCameraDirection()
-    if options.customScreenResEnabled then
-        resolutionWidth.val   = options.customScreenResX
-        resolutionHeight.val  = options.customScreenResY
-    else
-        resolutionWidth.val   = lib_helpers.GetResolutionWidth()
-        resolutionHeight.val  = lib_helpers.GetResolutionHeight()
-    end
-    resolutionWidth.half  = resolutionWidth.val * 0.5
-    resolutionHeight.half = resolutionHeight.val * 0.5
-    resolutionWidth.clampRescale  = resolutionWidth.val  * 1
-    resolutionHeight.clampRescale = resolutionHeight.val * 1
-    
-    aspectRatio       = resolutionWidth.val / resolutionHeight.val
     eyeWorld          = mgl.vec3(cameraCoords.x, cameraCoords.y, cameraCoords.z)
     eyeDir            = mgl.vec3(  cameraDirs.x,   cameraDirs.y,   cameraDirs.z)
+
     local cameraZoom  = getCameraZoom()
     if options.customFoVEnabled then
         if     cameraZoom == 0 then
@@ -1348,63 +1540,88 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
             and (options[trkIdx].HideWhenSymbolChat == false or lib_menu.IsSymbolChatOpen() == false)
             and (options[trkIdx].HideWhenMenuUnavailable == false or lib_menu.IsMenuUnavailable() == false)
         then
-
-            if options[trkIdx].customTrackerColorEnable == true then
-                local FrameBgColor  = shiftHexColor(options[trkIdx].customTrackerColorBackground)
-                local WindowBgColor = shiftHexColor(options[trkIdx].customTrackerColorWindow)
-                local TrackerColor  = shiftHexColor(options[trkIdx].customTrackerColorMarker)
-                imgui.PushStyleColor("ChildWindowBg", FrameBgColor[2]/255, FrameBgColor[3]/255,  FrameBgColor[4]/255,  FrameBgColor[1]/255)
-                imgui.PushStyleColor("WindowBg",     WindowBgColor[2]/255, WindowBgColor[3]/255, WindowBgColor[4]/255, WindowBgColor[1]/255)
-                imgui.PushStyleColor("Border",        TrackerColor[2]/255, TrackerColor[3]/255,  TrackerColor[4]/255,  TrackerColor[1]/255)
-            end
-
-            if options[trkIdx].TransparentWindow == true then
-                imgui.PushStyleColor("WindowBg", 0.0, 0.0, 0.0, 0.0)
-            end
-
             if cache_floor[itemIdx].screenShow then
-                
+
+                if options[trkIdx].customTrackerColorEnable == true then
+                    local FrameBgColor  = shiftHexColor(options[trkIdx].customTrackerColorBackground)
+                    local WindowBgColor = shiftHexColor(options[trkIdx].customTrackerColorWindow)
+                    local TrackerColor  = shiftHexColor(options[trkIdx].customTrackerColorMarker)
+                    imgui.PushStyleColor("ChildWindowBg", FrameBgColor[2]/255, FrameBgColor[3]/255,  FrameBgColor[4]/255,  FrameBgColor[1]/255)
+                    imgui.PushStyleColor("WindowBg",     WindowBgColor[2]/255, WindowBgColor[3]/255, WindowBgColor[4]/255, WindowBgColor[1]/255)
+                    imgui.PushStyleColor("Border",        TrackerColor[2]/255, TrackerColor[3]/255,  TrackerColor[4]/255,  TrackerColor[1]/255)
+                end
+
+                if options[trkIdx].TransparentWindow == true then
+                    imgui.PushStyleColor("WindowBg", 0.0, 0.0, 0.0, 0.0)
+                end
+
                 if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
                     imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
                 end
-                
+
                 local sx, sy
                 if options[trkIdx].clampItemView then
                     sx = clampVal(  cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX, 
-                                    -resolutionWidth.half+options[trkIdx].boxSizeX,  resolutionWidth.half-options[trkIdx].boxSizeX)
+                                    resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
                     sy = clampVal(  cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY,
-                                    -resolutionHeight.half+options[trkIdx].boxSizeY, resolutionHeight.half-options[trkIdx].boxSizeY)
+                                    resolutionHeight.clampBoxLowest, resolutionHeight.clampBoxHighest )
                 else
                     sx = cache_floor[itemIdx].screenX + 2 -- padding
                     sy = cache_floor[itemIdx].screenY
                 end
-                local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy,
-                            options[trkIdx].W, options[trkIdx].H, 5) -- 5 is "center" window anchor
-            
+
+                local wx, wy
+                local wPadding = 6
+                if options[trkIdx].W < 1 then
+                    local textC = getWText(cache_floor[itemIdx].wName)
+                    wx, wy = imgui.CalcTextSize(getUnWText(textC))
+                    wx = clampVal(wx, trackerBox.sizeX, wx) + wPadding
+                else
+                    wx = options[trkIdx].W
+                end
+                if options[trkIdx].H < 1 then
+                    if not wy then
+                        local textC = getWText(cache_floor[itemIdx].wName)
+                        _, wy = imgui.CalcTextSize(getUnWText(textC))
+                    end
+                    wy = wy + trackerBox.sizeY + wPadding * 2
+                    print(wy)
+                else
+                    wy = options[trkIdx].H
+                end
+
+                local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5) -- 5 is "center" window anchor
+
                 -- implicit behaviour: by not allowing resizing, titlebar, moving, and using SetNextWindow___
                 --                     prevent 1000's of temp window's config stored in imgui.ini
-                imgui.SetNextWindowPos( ps[1], ps[2], "Always")
-                imgui.SetNextWindowSize(options[trkIdx].W, options[trkIdx].H, "Always")
+                imgui.SetNextWindowPos( ps[1], ps[2], "Always" )
+                imgui.SetNextWindowSize( wx, wy, "Always" )
             
                 if imgui.Begin(cache_floor[itemIdx].windowName,
-                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", }
-                ) then
+                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", } )
+                then
+                    if options[trkIdx].customFontScaleEnabled then
+                        imgui.SetWindowFontScale(options[trkIdx].fontScale)
+                    else
+                        imgui.SetWindowFontScale(1.0)
+                    end
                     PresentBoxTracker(cache_floor[itemIdx],trkIdx,itemIdx)
                 end
                 imgui.End()
-            end
 
-            if options[trkIdx].customTrackerColorEnable == true then
-                imgui.PopStyleColor()
-                imgui.PopStyleColor()
-                imgui.PopStyleColor()
-            end
+                if options[trkIdx].customTrackerColorEnable == true then
+                    imgui.PopStyleColor()
+                    imgui.PopStyleColor()
+                    imgui.PopStyleColor()
+                end
+    
+                if options[trkIdx].TransparentWindow == true then
+                    imgui.PopStyleColor()
+                end
+    
+                options[trkIdx].changed = false
 
-            if options[trkIdx].TransparentWindow == true then
-                imgui.PopStyleColor()
             end
-
-            options[trkIdx].changed = false
         end
         if itemIdx>=itemCount then
             break
@@ -1425,7 +1642,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.1.0",
+        version = "0.2.0",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,

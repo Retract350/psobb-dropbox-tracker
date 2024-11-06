@@ -218,6 +218,36 @@ local function ConfigurationWindow(configuration)
                     imgui.PopItemWidth()
                 end
                 if Additional ~= nil then
+                    if Additional.includeAtrributes then
+                        if imgui.Checkbox("Show Attributes in Name", cateTabl.includeAtrributes) then
+                            cateTabl.includeAtrributes = not cateTabl.includeAtrributes
+                            this.changed = true
+                        end
+                    end
+                    if Additional.includeHit then
+                        if imgui.Checkbox("Show Hit in Name", cateTabl.includeHit) then
+                            cateTabl.includeHit = not cateTabl.includeHit
+                            this.changed = true
+                        end
+                    end
+                    if Additional.includeStats then
+                        if imgui.Checkbox("Show Stats in Name", cateTabl.includeStats) then
+                            cateTabl.includeStats = not cateTabl.includeStats
+                            this.changed = true
+                        end
+                    end
+                    if Additional.includeSlots then
+                        if imgui.Checkbox("Show Slots in Name", cateTabl.includeSlots) then
+                            cateTabl.includeSlots = not cateTabl.includeSlots
+                            this.changed = true
+                        end
+                    end
+                    if Additional.highlightMaxStats then
+                        if imgui.Checkbox("Highlight Max Stats in Name", cateTabl.highlightMaxStats) then
+                            cateTabl.highlightMaxStats = not cateTabl.highlightMaxStats
+                            this.changed = true
+                        end
+                    end
                     if Additional.onlyShowIfInvNotMaxStack then
                         if imgui.Checkbox("Hide When Inventory Max Stack", cateTabl.onlyShowIfInvNotMaxStack) then
                             cateTabl.onlyShowIfInvNotMaxStack = not cateTabl.onlyShowIfInvNotMaxStack
@@ -450,6 +480,28 @@ local function ConfigurationWindow(configuration)
                         this.changed = true
                     end
 
+                    if imgui.Checkbox("Use Custom Font Scaling", _configuration[trkIdx].customFontScaleEnabled) then
+                        _configuration[trkIdx].customFontScaleEnabled = not _configuration[trkIdx].customFontScaleEnabled
+                        this.changed = true
+                    end
+        
+                    if _configuration[trkIdx].customFontScaleEnabled then
+                        local curX = imgui.GetCursorPosX()
+                        
+                        imgui.PushID("customFontScaleEnabled")
+        
+                        imgui.SetCursorPosX(curX + 20)
+                        imgui.PushItemWidth(120)
+                        success, _configuration[trkIdx].fontScale = imgui.InputFloat("Font Scale", _configuration[trkIdx].fontScale)
+                        imgui.PopItemWidth()
+                        if success then
+                            this.changed = true
+                        end
+        
+                        imgui.PopID()
+                        imgui.SetCursorPosX(curX)
+                    end
+
                     if imgui.Checkbox("Custom Tracker Color", _configuration[trkIdx].customTrackerColorEnable) then
                         _configuration[trkIdx].customTrackerColorEnable = not _configuration[trkIdx].customTrackerColorEnable
                         this.changed = true
@@ -517,14 +569,11 @@ local function ConfigurationWindow(configuration)
                     imgui.TreePop()
                 end
 
-                if imgui.TreeNodeEx("Customize Trackers") then
+                if imgui.TreeNodeEx("Trackers") then
                     local SWidth = 110
                     local SWidthP = SWidth + 16
-                    local SizingRange = {0,100}
-                    local MarkerSizeRange = {0.001,5}
                     local MesetaRange = {1,999999}
                     local TechRange = {1,30}
-                    local TechAntiRange = {1,7}
 
                     if _configuration[trkIdx].customTrackerColorEnable then
                         local PlotHistogramColor = shiftHexColor(_configuration[trkIdx].customTrackerColorMarker)
@@ -532,7 +581,20 @@ local function ConfigurationWindow(configuration)
                     end
 
                     if imgui.TreeNodeEx("Non-Rares") then
-                    
+                        local AdditionalW = {
+                            includeAtrributes = true,
+                            includeHit = true,
+                        }
+                        local AdditionalA = {
+                            includeStats = true,
+                            includeSlots = true,
+                            highlightMaxStats = true,
+                        }
+                        local AdditionalB = {
+                            includeStats = true,
+                            highlightMaxStats = true,
+                        }
+
                         imgui.PushItemWidth(SWidthP)
                         success, _configuration[trkIdx].HighHitCommonWeapon.HitMin = imgui.SliderInt("Minimum Hit", _configuration[trkIdx].HighHitCommonWeapon.HitMin,-10, 100)
                         imgui.PopItemWidth()
@@ -540,13 +602,13 @@ local function ConfigurationWindow(configuration)
                             this.changed = true
                         end
                         
-                        dropPreview("Low Hit Weapons", "LowHitCommonWeapon", trkIdx)
-                        dropPreview("High Hit Weapons", "HighHitCommonWeapon", trkIdx)
+                        dropPreview("Low Hit Weapons", "LowHitCommonWeapon", trkIdx, AdditionalW)
+                        dropPreview("High Hit Weapons", "HighHitCommonWeapon", trkIdx, AdditionalW)
                         
-                        dropPreview("-3slot Armor", "CommonArmor", trkIdx)
-                        dropPreview("4slot Armor", "MaxSocketCommonArmor", trkIdx)
+                        dropPreview("<4slot Armor", "CommonArmor", trkIdx, AdditionalA)
+                        dropPreview("4slot Armor", "MaxSocketCommonArmor", trkIdx, AdditionalA)
 
-                        dropPreview("Common Barriers", "CommonBarrier", trkIdx)
+                        dropPreview("Common Barriers", "CommonBarrier", trkIdx, AdditionalB)
                         dropPreview("Common Units", "CommonUnit", trkIdx)
                         dropPreview("Low Techs", "CommonTech", trkIdx)
                         
@@ -566,11 +628,24 @@ local function ConfigurationWindow(configuration)
                     end
 
                     if imgui.TreeNodeEx("Rares") then
+                        local AdditionalW = {
+                            includeAtrributes = true,
+                            includeHit = true,
+                        }
+                        local AdditionalA = {
+                            includeStats = true,
+                            includeSlots = true,
+                            highlightMaxStats = true,
+                        }
+                        local AdditionalB = {
+                            includeStats = true,
+                            highlightMaxStats = true,
+                        }
 
-                        dropPreview("Weapons", "RareWeapon", trkIdx)
-                        dropPreview("SRank Weapons", "ESWeapon", trkIdx)
-                        dropPreview("Armor", "RareArmor", trkIdx)
-                        dropPreview("Barriers", "RareBarrier", trkIdx)
+                        dropPreview("Rare Weapons", "RareWeapon", trkIdx, AdditionalW)
+                        dropPreview("SRank Weapons", "ESWeapon", trkIdx, AdditionalW)
+                        dropPreview("Armor", "RareArmor", trkIdx, AdditionalA)
+                        dropPreview("Barriers", "RareBarrier", trkIdx, AdditionalB)
                         dropPreview("Units", "RareUnit", trkIdx)
                         dropPreview("Mags", "RareMag", trkIdx)
                         dropPreview("Consumables", "RareConsumables", trkIdx)
@@ -704,7 +779,7 @@ local function ConfigurationWindow(configuration)
                     this.changed = true
                 end
 
-                imgui.SameLine(0, 10)
+                imgui.SameLine(0, 25)
                 imgui.PushItemWidth(100)
                 success, _configuration[trkIdx].boxSizeY = imgui.InputInt("Y Size", _configuration[trkIdx].boxSizeY)
                 imgui.PopItemWidth()
