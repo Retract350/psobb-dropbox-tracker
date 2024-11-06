@@ -61,19 +61,16 @@ local function LoadOptions()
             options[trkIdx] = {}
         end
         SetDefaultValue( options[trkIdx], "EnableWindow", true )
-        SetDefaultValue( options[trkIdx], "AlwaysOnTop", false )
         SetDefaultValue( options[trkIdx], "HideWhenMenu", false )
         SetDefaultValue( options[trkIdx], "HideWhenSymbolChat", false )
         SetDefaultValue( options[trkIdx], "HideWhenMenuUnavailable", false )
         SetDefaultValue( options[trkIdx], "changed", true )
-        SetDefaultValue( options[trkIdx], "Anchor", 5 )
-        SetDefaultValue( options[trkIdx], "X", 0 )
-        SetDefaultValue( options[trkIdx], "Y", 0 )
+        SetDefaultValue( options[trkIdx], "boxOffsetX", 0 )
+        SetDefaultValue( options[trkIdx], "boxOffsetY", 0 )
+        SetDefaultValue( options[trkIdx], "boxSizeX", 42 )
+        SetDefaultValue( options[trkIdx], "boxSizeY", 42 )
         SetDefaultValue( options[trkIdx], "W", 150 )
         SetDefaultValue( options[trkIdx], "H", 90 )
-        SetDefaultValue( options[trkIdx], "NoTitleBar", "" )
-        SetDefaultValue( options[trkIdx], "NoResize", "" )
-        SetDefaultValue( options[trkIdx], "NoMove", "" )
         SetDefaultValue( options[trkIdx], "AlwaysAutoResize", "" )
         SetDefaultValue( options[trkIdx], "TransparentWindow", false )
         SetDefaultValue( options[trkIdx], "customTrackerColorEnable", false )
@@ -86,12 +83,6 @@ local function LoadOptions()
         SetDefaultValue( options[trkIdx], "showNameClosestDist", 100 )
         SetDefaultValue( options[trkIdx], "clampItemView", false )
         SetDefaultValue( options[trkIdx], "ignoreItemMaxDist", 0 )
-
-        if trkIdx == "tracker1" then
-            options[trkIdx].AlwaysOnTop              = lib_helpers.NotNilOrDefault(options[trkIdx].AlwaysOnTop, true)
-        else
-            options[trkIdx].AlwaysOnTop              = lib_helpers.NotNilOrDefault(options[trkIdx].AlwaysOnTop, true)
-        end
 
         if options[trkIdx].category == nil or type(options[trkIdx].category) ~= "table" then
             options[trkIdx].category = {}
@@ -163,7 +154,7 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx]["CommonUnit"], "enabled", false)
         SetDefaultValue(options[trkIdx]["CommonTech"], "enabled", false)
 
-        cate = "HighHitCommonWeapon"
+        local cate = "HighHitCommonWeapon"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "HitMin", 40)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
@@ -576,7 +567,6 @@ local function SaveOptions(options)
     end
 end
 
-
 local playerSelfAddr = nil
 local playerSelfCoords = nil
 local playerSelfDirs = nil
@@ -589,13 +579,21 @@ local cameraNormDirVec3 = nil
 local item_graph_data = {}
 local toolLookupTable = {}
 local invToolLookupTable = {}
-local resolutionWidth = nil
-local resolutionHeight = nil
+local resolutionWidth = {}
+local resolutionHeight = {}
 local screenFov = nil
 local aspectRatio = nil
 local eyeWorld    = nil
 local eyeDir      = nil
 local determinantScr = nil
+
+local _CameraPosX      = 0x00A48780
+local _CameraPosY      = 0x00A48784
+local _CameraPosZ      = 0x00A48788
+local _CameraDirX      = 0x00A4878C
+local _CameraDirY      = 0x00A48790
+local _CameraDirZ      = 0x00A48794
+local _CameraZoomLevel = 0x009ACEDC
 
 local function updateToolLookupTable()
     for i=1, 1 do
@@ -712,14 +710,6 @@ local function GetPlayerDirection(player)
     }
 end
 
-local _CameraPosX      = 0x00A48780
-local _CameraPosY      = 0x00A48784
-local _CameraPosZ      = 0x00A48788
-local _CameraDirX      = 0x00A4878C
-local _CameraDirY      = 0x00A48790
-local _CameraDirZ      = 0x00A48794
-local _CameraZoomLevel = 0x009ACEDC
-
 local function getCameraZoom()
     return pso.read_u32(_CameraZoomLevel)
 end
@@ -748,23 +738,6 @@ local function NormalizeVec3(vec3)
         z = vec3.z / vec3Dist,
     }
 end
-
-local function addVec3(A, B)
-    return { x = A.x + B.x, y = A.y + B.y, z = A.z + B.z }
-end
-local function diffVec3(A, B)
-    return { x = A.x - B.x, y = A.y - B.y, z = A.z - B.z }
-end
-local function divVec3(A, B)
-    return { x = A.x / B.x, y = A.y / B.y, z = A.z / B.z }
-end
-local function multVec3(A, B)
-    return { x = A.x * B.x, y = A.y * B.y, z = A.z * B.z }
-end
-local function dotProductVec3(A, B)
-    return A.x * B.x + A.y * B.y + A.z * B.z
-end
-
 
 local function clampVal(clamp, min, max)
     return clamp < min and min or clamp > max and max or clamp
@@ -810,16 +783,11 @@ local function computePixelCoordinates(pWorld, eyeWorld, eyeDir, determinant)
     local eyeRight = mgl.cross( eyeDir, mgl.vec3(0,1,0) )
     local eyeLeft  = mgl.cross( eyeRight, eyeDir )
 
-    if fdp < 0 then
-        vis = -1
-    else
-        --Dotting the projected vector onto the right and up vectors gives us screen positions relative to the center of the screen.
-        --We add half-widths / half-heights to these coordinates to give us screen positions relative to the upper-left corner of the screen.
-        --We have to subtract from the "up" instead of adding, since screen coordinates decrease as they go upwards.
-        pRaster.x = mgl.dot(eyeRight,vProj) --0.5 * iScreenW + mgl.dot(eyeRight,vProj)
-        pRaster.y = - mgl.dot(eyeLeft,vProj) --0.5 * iScreenH - mgl.dot(eyeLeft,vProj)
+    if fdp > 0.0000001 then
         vis = 1
     end
+    pRaster.x =   mgl.dot(eyeRight,vProj) --0.5 * iScreenW + mgl.dot(eyeRight,vProj)
+    pRaster.y = - mgl.dot(eyeLeft,vProj) --0.5 * iScreenH - mgl.dot(eyeLeft,vProj)
 
     return pRaster, vis
 end
@@ -841,15 +809,9 @@ local function ItemAppendScreenPos(item)
 
     local pRaster,visible = computePixelCoordinates(item.pos3, eyeWorld, eyeDir, determinantScr)
     
-    if visible > 0 then
-        item.screenX = pRaster.x
-        item.screenY = pRaster.y
-        item.screenShow = true
-    else
-        item.screenX = nil
-        item.screenY = nil
-        item.screenShow = false
-    end
+    item.screenX = pRaster.x
+    item.screenY = pRaster.y
+    item.screenVisDirection = visible
 end
 
 local function ItemAppendWindow(item)
@@ -867,22 +829,14 @@ end
 
 local function ItemAppendVisibilityData(cate,item,trkIdx)
     if not item then return end
-    -- --debug
-    -- if type(size) == "table" or type(val) == "table" then
-    --     print(tostring(size))
-    --     print(tostring(val))
-    --     print(tostring(item))
-    --     print(item)
-    --     print(item.name)
-    -- end
-    -- --eof
+
     if not item.screenShouldNotShow then
-    if not cate.enabled or (not cate.showName and not cate.showBox) then
-        item.screenShow =  false
-        item.screenX = nil
-        item.screenY = nil
-        return
-    end
+        if not cate.enabled or (not cate.showName and not cate.showBox) then
+            item.screenShow =  false
+            item.screenX = nil
+            item.screenY = nil
+            return
+        end
     end
 
     -- ignore if item is too far away
@@ -896,10 +850,34 @@ local function ItemAppendVisibilityData(cate,item,trkIdx)
             return
         end
     end
+    
     -- get x,y position on screen where item is
     ItemAppendScreenPos(item)
+    if options[trkIdx].clampItemView then
+        if item.screenVisDirection < 0 then
+            local tempVec2 = mgl.normalize( mgl.vec2(-item.screenX,-item.screenY) ) * resolutionHeight.clampRescale
+            item.screenX = tempVec2.x
+            item.screenY = tempVec2.y
+        else
+            if not (item.screenX > -resolutionHeight.clampRescale and item.screenX < resolutionHeight.clampRescale and
+                    item.screenY > -resolutionWidth.clampRescale  and item.screenY < resolutionWidth.clampRescale)
+            then
+                local tempVec2 = mgl.normalize( mgl.vec2(item.screenX, item.screenY) ) * resolutionHeight.clampRescale
+                item.screenX = tempVec2.x
+                item.screenY = tempVec2.y
+            end
+        end
+        item.screenShow = true
+    else
+        if item.screenVisDirection < 0 then
+            item.screenShow = false
+        else
+            item.screenShow = true
+        end
+    end
 
     if not item.screenShow then return end
+
     ItemAppendWindow(item)
     item.cate = cate
 end
@@ -1132,7 +1110,7 @@ local function ProcessItem(item, floor, save, fromMagWindow, trkIdx)
 
 end
 
-local update_delay = (options.updateThrottle * 1000)
+local update_delay = options.updateThrottle
 local current_time = 0
 local last_floor_time = 0
 local cache_floor = nil
@@ -1199,8 +1177,8 @@ local function PresentBoxTracker(item,trkIdx,curCount)
     if item.cate then
         local windowW,windowH = imgui.GetWindowSize()
         local padding     = 6
-        local sizeX       = 42 - padding
-        local sizeY       = 42
+        local sizeX       = options[trkIdx].boxSizeX - padding
+        local sizeY       = options[trkIdx].boxSizeY
         local cateTabl    = item.cate
         local windowWP    = windowW - padding
 
@@ -1218,6 +1196,8 @@ local function PresentBoxTracker(item,trkIdx,curCount)
                     setItemNameText()
                 else
                     if item.curPlayerDistance <= options[trkIdx].showNameClosestDist and not item.screenShouldNotShow then
+                        setItemNameText()
+                    elseif cateTabl.showName and not item.screenShouldNotShow then
                         setItemNameText()
                     end
                 end
@@ -1269,10 +1249,6 @@ local function PresentBoxTracker(item,trkIdx,curCount)
             imgui.PopStyleColor()
         end
     end
-
-    if options[trkIdx].NoTitleBar == "" then
-        local placeholder = 0
-    end
 end
 
 
@@ -1295,7 +1271,7 @@ local function present()
         updateToolLookupTable()
         SaveOptions(options)
         -- Update the delay too
-        update_delay = (options.updateThrottle * 1000)
+        update_delay = options.updateThrottle
     end
 
     -- Global enable here to let the configuration window work
@@ -1316,14 +1292,18 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
     cameraCoords      = getCameraCoordinates()
     cameraDirs        = getCameraDirection()
     if options.customScreenResEnabled then
-        resolutionWidth   = options.customScreenResX
-        resolutionHeight  = options.customScreenResY
+        resolutionWidth.val   = options.customScreenResX
+        resolutionHeight.val  = options.customScreenResY
     else
-        resolutionWidth   = lib_helpers.GetResolutionWidth()
-        resolutionHeight  = lib_helpers.GetResolutionHeight()
+        resolutionWidth.val   = lib_helpers.GetResolutionWidth()
+        resolutionHeight.val  = lib_helpers.GetResolutionHeight()
     end
+    resolutionWidth.half  = resolutionWidth.val * 0.5
+    resolutionHeight.half = resolutionHeight.val * 0.5
+    resolutionWidth.clampRescale  = resolutionWidth.val  * 1
+    resolutionHeight.clampRescale = resolutionHeight.val * 1
     
-    aspectRatio       = resolutionWidth / resolutionHeight
+    aspectRatio       = resolutionWidth.val / resolutionHeight.val
     eyeWorld          = mgl.vec3(cameraCoords.x, cameraCoords.y, cameraCoords.z)
     eyeDir            = mgl.vec3(  cameraDirs.x,   cameraDirs.y,   cameraDirs.z)
     local cameraZoom  = getCameraZoom()
@@ -1342,9 +1322,13 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
             screenFov = 69 -- a good guess
         end
     else
-        screenFov     = math.rad( math.deg( 2*math.atan(0.56470588 * aspectRatio) ) - (cameraZoom-1) * 0.600 - clampVal(cameraZoom,0,1) * 0.300 ) -- the constant here should work for most to all aspect ratios, gud enuff.
+        screenFov     = math.rad( 
+            math.deg( 
+                2*math.atan(0.56470588 * aspectRatio) -- 0.56470588 is 768/1360
+            ) - (cameraZoom-1) * 0.600 - clampVal(cameraZoom,0,1) * 0.300 -- the constant here should work for most to all aspect ratios between 1.25 to 1.77, gud enuff.
+        ) 
     end
-    determinantScr    = aspectRatio * 3 * resolutionHeight / ( 6 * math.tan( 0.5 * screenFov ) )
+    determinantScr    = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
 
     UpdateItemCache()
     UpdateInventoryCache()
@@ -1353,11 +1337,11 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
     newInvToolLookupTable()
     updateInvToolLookupTable()
     local itemIdx = 0
+    local trkIdx = "tracker1"
 
     for i=1, options.numTrackers, 1 do
         itemIdx = itemIdx + 1
         if itemIdx > options.numTrackers or itemIdx > itemCount or itemCount < 1 then break end
-        local trkIdx = "tracker1"
 
         if (options[trkIdx].EnableWindow == true)
             and (options[trkIdx].HideWhenMenu == false or lib_menu.IsMenuOpen() == false)
@@ -1366,12 +1350,12 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
         then
 
             if options[trkIdx].customTrackerColorEnable == true then
-                local FrameBgColor = shiftHexColor(options[trkIdx].customTrackerColorBackground)
+                local FrameBgColor  = shiftHexColor(options[trkIdx].customTrackerColorBackground)
                 local WindowBgColor = shiftHexColor(options[trkIdx].customTrackerColorWindow)
-                local TrackerColor = shiftHexColor(options[trkIdx].customTrackerColorMarker)
-                imgui.PushStyleColor("ChildWindowBg", FrameBgColor[2]/255, FrameBgColor[3]/255, FrameBgColor[4]/255, FrameBgColor[1]/255)
-                imgui.PushStyleColor("WindowBg", WindowBgColor[2]/255, WindowBgColor[3]/255, WindowBgColor[4]/255, WindowBgColor[1]/255)
-                imgui.PushStyleColor("Border", TrackerColor[2]/255, TrackerColor[3]/255, TrackerColor[4]/255, TrackerColor[1]/255)
+                local TrackerColor  = shiftHexColor(options[trkIdx].customTrackerColorMarker)
+                imgui.PushStyleColor("ChildWindowBg", FrameBgColor[2]/255, FrameBgColor[3]/255,  FrameBgColor[4]/255,  FrameBgColor[1]/255)
+                imgui.PushStyleColor("WindowBg",     WindowBgColor[2]/255, WindowBgColor[3]/255, WindowBgColor[4]/255, WindowBgColor[1]/255)
+                imgui.PushStyleColor("Border",        TrackerColor[2]/255, TrackerColor[3]/255,  TrackerColor[4]/255,  TrackerColor[1]/255)
             end
 
             if options[trkIdx].TransparentWindow == true then
@@ -1383,13 +1367,19 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
                 if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
                     imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
                 end
-
-                local ps = lib_helpers.GetPosBySizeAndAnchor(
-                    cache_floor[itemIdx].screenX + 2,
-                    cache_floor[itemIdx].screenY,
-                    options[trkIdx].W,
-                    options[trkIdx].H,
-                    5) -- 5 is "center" window anchor
+                
+                local sx, sy
+                if options[trkIdx].clampItemView then
+                    sx = clampVal(  cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX, 
+                                    -resolutionWidth.half+options[trkIdx].boxSizeX,  resolutionWidth.half-options[trkIdx].boxSizeX)
+                    sy = clampVal(  cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY,
+                                    -resolutionHeight.half+options[trkIdx].boxSizeY, resolutionHeight.half-options[trkIdx].boxSizeY)
+                else
+                    sx = cache_floor[itemIdx].screenX + 2 -- padding
+                    sy = cache_floor[itemIdx].screenY
+                end
+                local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy,
+                            options[trkIdx].W, options[trkIdx].H, 5) -- 5 is "center" window anchor
             
                 -- implicit behaviour: by not allowing resizing, titlebar, moving, and using SetNextWindow___
                 --                     prevent 1000's of temp window's config stored in imgui.ini
@@ -1397,13 +1387,7 @@ local myFloor = lib_characters.GetCurrentFloorSelf()
                 imgui.SetNextWindowSize(options[trkIdx].W, options[trkIdx].H, "Always")
             
                 if imgui.Begin(cache_floor[itemIdx].windowName,
-                    nil,
-                    {
-                        "NoTitleBar",
-                        "NoResize",
-                        "NoMove",
-                        "NoInputs",
-                    }
+                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", }
                 ) then
                     PresentBoxTracker(cache_floor[itemIdx],trkIdx,itemIdx)
                 end
@@ -1441,7 +1425,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.0.2",
+        version = "0.1.0",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,

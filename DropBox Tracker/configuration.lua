@@ -124,12 +124,6 @@ local function ConfigurationWindow(configuration)
 
     local _showWindowSettings = function()
         local success
-        local anchorList =
-        {
-            "Top Left (Disabled)", "Left", "Bottom Left",
-            "Top", "Center", "Bottom",
-            "Top Right", "Right", "Bottom Right",
-        }
         local serverList =
         {
             "Vanilla",
@@ -376,7 +370,7 @@ local function ConfigurationWindow(configuration)
             end
 
             imgui.PushItemWidth(100)
-            success, _configuration.updateThrottle = imgui.InputInt("Delay Update (seconds)", _configuration.updateThrottle)
+            success, _configuration.updateThrottle = imgui.InputInt("Delay Update (miliSeconds)", _configuration.updateThrottle)
             imgui.PopItemWidth()
             if success then
                 this.changed = true
@@ -484,15 +478,15 @@ local function ConfigurationWindow(configuration)
                     local tempInputName
                     if _configuration[trkIdx].showNameOverride then
                         if _configuration[trkIdx].showNameClosestDist > 0 then
-                            tempInputName = "Only Ever Show Name of Closest __ Items within " .. _configuration[trkIdx].showNameClosestDist .. " Units"
+                            tempInputName = "Only Ever Show Name of Closest [" .. _configuration[trkIdx].showNameClosestItemsNum .. "] Items within [" .. _configuration[trkIdx].showNameClosestDist .. "] Units"
                         else
-                            tempInputName = "Only Ever Show Name of Closest __ Items"
+                            tempInputName = "Only Ever Show Name of Closest [" .. _configuration[trkIdx].showNameClosestItemsNum .. "] Items"
                         end
                     else
                         if _configuration[trkIdx].showNameClosestDist > 0 then
-                            tempInputName = "Should Show Name of Closest __ Items within " .. _configuration[trkIdx].showNameClosestDist .. " Units"
+                            tempInputName = "Should Show Name of Closest [" .. _configuration[trkIdx].showNameClosestItemsNum .. "] Items within [" .. _configuration[trkIdx].showNameClosestDist .. "] Units"
                         else
-                            tempInputName = "Should Show Name of Closest __ Items"
+                            tempInputName = "Should Show Name of Closest [" .. _configuration[trkIdx].showNameClosestItemsNum .. "] Items"
                         end
                     end
 
@@ -686,7 +680,7 @@ local function ConfigurationWindow(configuration)
 
                 imgui.Text("Position and Size")
                 imgui.PushItemWidth(100)
-                success, _configuration[trkIdx].X = imgui.InputInt("X Offset", _configuration[trkIdx].X)
+                success, _configuration[trkIdx].boxOffsetX = imgui.InputInt("X Offset", _configuration[trkIdx].boxOffsetX)
                 imgui.PopItemWidth()
                 if success then
                     _configuration[trkIdx].changed = true
@@ -695,7 +689,24 @@ local function ConfigurationWindow(configuration)
 
                 imgui.SameLine(0, 10)
                 imgui.PushItemWidth(100)
-                success, _configuration[trkIdx].Y = imgui.InputInt("Y Offset", _configuration[trkIdx].Y)
+                success, _configuration[trkIdx].boxOffsetY = imgui.InputInt("Y Offset", _configuration[trkIdx].boxOffsetY)
+                imgui.PopItemWidth()
+                if success then
+                    _configuration[trkIdx].changed = true
+                    this.changed = true
+                end
+
+                imgui.PushItemWidth(100)
+                success, _configuration[trkIdx].boxSizeX = imgui.InputInt("X Size", _configuration[trkIdx].boxSizeX)
+                imgui.PopItemWidth()
+                if success then
+                    _configuration[trkIdx].changed = true
+                    this.changed = true
+                end
+
+                imgui.SameLine(0, 10)
+                imgui.PushItemWidth(100)
+                success, _configuration[trkIdx].boxSizeY = imgui.InputInt("Y Size", _configuration[trkIdx].boxSizeY)
                 imgui.PopItemWidth()
                 if success then
                     _configuration[trkIdx].changed = true
