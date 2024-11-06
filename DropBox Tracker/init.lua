@@ -1349,7 +1349,7 @@ local function getWText(wText,Default)
 end
 
 local function PresentBoxTracker(item,trkIdx,curCount)
-    local textC = ""
+    local textC = {{"",nil}}
 
     if item.cate then
         local windowW,windowH = imgui.GetWindowSize()
