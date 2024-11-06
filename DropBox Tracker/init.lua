@@ -1340,11 +1340,11 @@ local function getUnWText(wText)
     return str
 end
 
-local function getWText(wText)
+local function getWText(wText,Default)
     if wText then
         return wText
     else
-        return { {item.name, nil} }
+        return { {Default, nil} }
     end
 end
 
@@ -1362,24 +1362,24 @@ local function PresentBoxTracker(item,trkIdx,curCount)
         if options[trkIdx].showNameOverride then
             if curCount <= options[trkIdx].showNameClosestItemsNum then
                 if options[trkIdx].showNameClosestDist <= 0 then
-                    textC = getWText(item.wName)
+                    textC = getWText(item.wName,item.name)
                 elseif item.curPlayerDistance <= options[trkIdx].showNameClosestDist then
-                    textC = getWText(item.wName)
+                    textC = getWText(item.wName,item.name)
                 end
             end
         else
             if curCount <= options[trkIdx].showNameClosestItemsNum then
                 if options[trkIdx].showNameClosestDist <= 0 then
-                    textC = getWText(item.wName)
+                    textC = getWText(item.wName,item.name)
                 else
                     if item.curPlayerDistance <= options[trkIdx].showNameClosestDist and not item.screenShouldNotShow then
-                        textC = getWText(item.wName)
+                        textC = getWText(item.wName,item.name)
                     elseif cateTabl.showName and not item.screenShouldNotShow then
-                        textC = getWText(item.wName)
+                        textC = getWText(item.wName,item.name)
                     end
                 end
             elseif cateTabl.showName and not item.screenShouldNotShow then
-                textC = getWText(item.wName)
+                textC = getWText(item.wName,item.name)
             end
         end
 
@@ -1573,7 +1573,7 @@ local function present()
                 local wx, wy
                 local wPadding = 6
                 if options[trkIdx].W < 1 then
-                    local textC = getWText(cache_floor[itemIdx].wName)
+                    local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
                     wx, wy = imgui.CalcTextSize(getUnWText(textC))
                     wx = clampVal(wx, trackerBox.sizeX, wx) + wPadding
                 else
@@ -1581,11 +1581,10 @@ local function present()
                 end
                 if options[trkIdx].H < 1 then
                     if not wy then
-                        local textC = getWText(cache_floor[itemIdx].wName)
+                        local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
                         _, wy = imgui.CalcTextSize(getUnWText(textC))
                     end
                     wy = wy + trackerBox.sizeY + wPadding * 2
-                    print(wy)
                 else
                     wy = options[trkIdx].H
                 end
@@ -1642,7 +1641,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.0",
+        version = "0.2.1",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
