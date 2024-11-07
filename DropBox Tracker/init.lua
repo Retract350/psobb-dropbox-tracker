@@ -601,6 +601,7 @@ local aspectRatio = nil
 local eyeWorld    = nil
 local eyeDir      = nil
 local determinantScr = nil
+local trackerWindowLookup = {}
 
 local _CameraPosX      = 0x00A48780
 local _CameraPosY      = 0x00A48784
@@ -1294,6 +1295,48 @@ local function UpdateItemCache()
             end
         end
         table.sort(cache_floor,sortByDistanceP)
+        -- reassign a tracker window to its item
+        local trackerNum = 1
+        local prevTrackerWindowLookup = trackerWindowLookup
+        trackerWindowLookup = {}
+        local cache_floor_notracker = {}
+        local usedWindowNameIdLookup = {}
+        local windowNameIdCurIdx = 1
+        local function nextWindowNameId()
+            for i=windowNameIdCurIdx, options.numTrackers, 1 do
+                if not usedWindowNameIdLookup[i] then
+                    windowNameIdCurIdx = 1 + i
+                    return i
+                end
+                windowNameIdCurIdx = i
+            end
+        end
+        for i=1, #cache_floor, 1 do
+            if trackerNum > options.numTrackers then break end
+            local item = cache_floor[i]
+            local windowNameId = prevTrackerWindowLookup[item.id]
+            if windowNameId then
+                usedWindowNameIdLookup[windowNameId] = true
+                trackerWindowLookup[item.id] = windowNameId
+                item.windowNameId = windowNameId
+                trackerNum = trackerNum + 1
+            else
+                table.insert(cache_floor_notracker, item)
+            end
+        end
+        -- assign a tracker window to an item
+        for i=1, #cache_floor_notracker, 1 do
+            if trackerNum > options.numTrackers then break end
+            local item = cache_floor_notracker[i]
+            local windowNameId = nextWindowNameId()
+            if windowNameId then
+                trackerWindowLookup[item.id] = windowNameId
+                item.windowNameId = windowNameId
+                trackerNum = trackerNum + 1
+            else
+                break -- no more trackers
+            end
+        end
         last_floor_time = current_time
     end
 end
@@ -1558,45 +1601,9 @@ local function present()
                 if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
                     imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
                 end
-
-                local sx, sy
-                if options[trkIdx].clampItemView then
-                    sx = clampVal(  cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX, 
-                                    resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
-                    sy = clampVal(  cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY,
-                                    resolutionHeight.clampBoxLowest, resolutionHeight.clampBoxHighest )
-                else
-                    sx = cache_floor[itemIdx].screenX + 2 -- padding
-                    sy = cache_floor[itemIdx].screenY
-                end
-
-                local wx, wy
-                local wPadding = 6
-                if options[trkIdx].W < 1 then
-                    local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                    wx, wy = imgui.CalcTextSize(getUnWText(textC))
-                    wx = clampVal(wx, trackerBox.sizeX, wx) + wPadding
-                else
-                    wx = options[trkIdx].W
-                end
-                if options[trkIdx].H < 1 then
-                    if not wy then
-                        local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                        _, wy = imgui.CalcTextSize(getUnWText(textC))
-                    end
-                    wy = wy + trackerBox.sizeY + wPadding * 2
-                else
-                    wy = options[trkIdx].H
-                end
-
-                local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5) -- 5 is "center" window anchor
-
-                -- implicit behaviour: by not allowing resizing, titlebar, moving, and using SetNextWindow___
-                --                     prevent 1000's of temp window's config stored in imgui.ini
-                imgui.SetNextWindowPos( ps[1], ps[2], "Always" )
-                imgui.SetNextWindowSize( wx, wy, "Always" )
             
-                if imgui.Begin(cache_floor[itemIdx].windowName,
+                local windowName = "DropBox Tracker - Hud" .. cache_floor[itemIdx].windowNameId
+                if imgui.Begin( windowName,
                     nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", } )
                 then
                     if options[trkIdx].customFontScaleEnabled then
@@ -1604,6 +1611,43 @@ local function present()
                     else
                         imgui.SetWindowFontScale(1.0)
                     end
+
+                    local wx, wy
+                    local tx = 0
+                    local ty = 0
+                    local wPadding = 6
+                    if options[trkIdx].W < 1 then
+                        local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
+                        tx, ty = imgui.CalcTextSize(getUnWText(textC))
+                        wx = clampVal(tx, trackerBox.sizeX, tx) + wPadding
+                    else
+                        wx = options[trkIdx].W
+                    end
+                    if options[trkIdx].H < 1 then
+                        if not ty or ty < 1 then
+                            local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
+                            _, ty = imgui.CalcTextSize(getUnWText(textC))
+                        end
+                        wy = ty + trackerBox.sizeY + wPadding * 2 + 4
+                    else
+                        wy = options[trkIdx].H
+                    end
+
+                    local sx, sy
+                    if options[trkIdx].clampItemView then
+                        sx = clampVal(  cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX, 
+                                        resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
+                        sy = clampVal(  cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY - ty*0.5,
+                                        resolutionHeight.clampBoxLowest +ty*0.5, resolutionHeight.clampBoxHighest-ty*0.5 )
+                    else
+                        sx = cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX
+                        sy = cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY - ty*0.5
+                    end
+    
+                    local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5 ) -- 5 is "center" window anchor
+
+                    imgui.SetWindowPos( windowName, ps[1], ps[2], "Always" )
+                    imgui.SetWindowSize( windowName, wx, wy, "Always" )
                     PresentBoxTracker(cache_floor[itemIdx],trkIdx,itemIdx)
                 end
                 imgui.End()
@@ -1641,7 +1685,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.1",
+        version = "0.2.2",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
