@@ -674,8 +674,8 @@ local function ConfigurationWindow(configuration)
                         dropPreview("Attack Tech 20", "TechAttack20", trkIdx)
                         dropPreview("Attack Tech High", "TechAttackHigh", trkIdx)
 
-                        dropPreview("Megid", "TechMegidHigh", trkIdx)
-                        dropPreview("Grants", "TechGrantsHigh", trkIdx)
+                        dropPreview("Megid", "TechMegid", trkIdx)
+                        dropPreview("Grants", "TechGrants", trkIdx)
 
                         imgui.PushItemWidth(140)
                         success, _configuration[trkIdx].TechSupportHigh.MinLvl = imgui.SliderInt("Support Minimum Level", _configuration[trkIdx].TechSupportHigh.MinLvl, TechRange[1], TechRange[2])
