@@ -71,7 +71,7 @@ local function LoadOptions()
         SetDefaultValue( options[trkIdx], "boxSizeY", 42 )
         SetDefaultValue( options[trkIdx], "W", 150 )
         SetDefaultValue( options[trkIdx], "H", 90 )
-        SetDefaultValue( options[trkIdx], "AlwaysAutoResize", "" )
+        SetDefaultValue( options[trkIdx], "AlwaysAutoResize", true )
         SetDefaultValue( options[trkIdx], "customFontScaleEnabled", false )
         SetDefaultValue( options[trkIdx], "fontScale", 1.0 )
         SetDefaultValue( options[trkIdx], "TransparentWindow", false )
@@ -1404,6 +1404,7 @@ local function PresentBoxTracker(item,trkIdx,curCount)
         local cateTabl    = item.cate
         local windowWP    = windowW - padding
 
+        -- if should show string "name" above item
         if options[trkIdx].showNameOverride then
             if curCount <= options[trkIdx].showNameClosestItemsNum then
                 if options[trkIdx].showNameClosestDist <= 0 then
@@ -1428,20 +1429,15 @@ local function PresentBoxTracker(item,trkIdx,curCount)
             end
         end
 
-        local textW = imgui.CalcTextSize(getUnWText(textC))
-
-        imgui.SetCursorPosX( (windowW - textW) * 0.5 )
+        local textW = imgui.CalcTextSize(getUnWText(textC)) -- get text width as simple string
+        imgui.SetCursorPosX( (windowW - textW) * 0.5 ) -- center text
         PrintWText(textC)
         
-        local cursorPosY = imgui.GetCursorPosY() -- Don't reposition, need cursor pos after imgui.Text()
-        sizeX = clampVal( sizeX, 0,  windowWP - 2 )
-        
-        -- unfinished code to draw box around object
-        --local sizePixUp   = computePixelCoordinates(item.pos3 + mgl.vec3(0, 3.4,0), eyeWorld, eyeDir, determinantScr)
-        --local sizePixDown = computePixelCoordinates(item.pos3 + mgl.vec3(0,-1.0,0), eyeWorld, eyeDir, determinantScr)
-        --sizeY = math.abs( sizePixUp.y - sizePixDown.y )
+        local cursorPosTY = imgui.GetCursorPosY() -- Don't change lines, need cursor pos After imgui.Text()
+        local cursorPosY = clampVal( windowH * 0.5 - sizeY*0.5 + cursorPosTY*0.5, cursorPosTY, windowH )
 
-        sizeY = clampVal( sizeY, 0,  windowH - cursorPosY )
+        sizeX = clampVal( sizeX, 0,  windowWP - 2 )
+        sizeY = clampVal( sizeY, 0,  windowH - cursorPosTY )
 
         if cateTabl.showBox and cateTabl.enabled and not item.screenShouldNotShow then
             if cateTabl.useCustomColor then
@@ -1456,50 +1452,76 @@ local function PresentBoxTracker(item,trkIdx,curCount)
             local borderSize = clampVal(cateTabl.borderSize, 1, math.floor(sizeX*0.5) - 2)
             borderSize       = clampVal(borderSize,          1, math.floor(sizeY*0.5) - 2)
             for border=1, borderSize-1, 1 do
-                imgui.SetCursorPosX( windowW*0.5 - sizeX*0.5 + border - 1 )
+                imgui.SetCursorPosX( windowW*0.5 - sizeX*0.5 + border +1 )
                 imgui.SetCursorPosY( cursorPosY + border - 1 )
-                imgui.BeginChild( "itembox##" .. border, sizeX - border*2 - 2, sizeY - border*2 - 2, true, {"NoInputs",} )
+                imgui.BeginChild( "itembox##" .. border, sizeX - border*2 - 2, sizeY - border*2 - 2, true, {"NoInputs"} )
                 imgui.EndChild()
             end
             imgui.PopStyleColor()
             
             local border = borderSize
-            imgui.SetCursorPosX( windowW*0.5 - sizeX*0.5 + border - 1 )
+            imgui.SetCursorPosX( windowW*0.5 - sizeX*0.5 + border +1 )
             imgui.SetCursorPosY( cursorPosY + border - 1 )
-            imgui.BeginChild( "itembox##" .. border, sizeX - border*2 - 2, sizeY - border*2 - 2, true, {"NoInputs",} )
+            imgui.BeginChild( "itembox##" .. border, sizeX - border*2 - 2, sizeY - border*2 - 2, true, {"NoInputs"} )
             imgui.EndChild()
             imgui.PopStyleColor()
         end
     end
 end
 
-local function calcScreenResolutions(trkIdx)
-    if options.customScreenResEnabled then
-        resolutionWidth.val     = options.customScreenResX
-        resolutionHeight.val    = options.customScreenResY
-    else
-        resolutionWidth.val     = lib_helpers.GetResolutionWidth()
-        resolutionHeight.val    = lib_helpers.GetResolutionHeight()
+local function calcScreenResolutions(forced,trkIdx)
+    if forced or not resolutionWidth.val or not resolutionHeight.val then
+        if options.customScreenResEnabled then
+            resolutionWidth.val     = options.customScreenResX
+            resolutionHeight.val    = options.customScreenResY
+        else
+            resolutionWidth.val     = lib_helpers.GetResolutionWidth()
+            resolutionHeight.val    = lib_helpers.GetResolutionHeight()
+        end
+        aspectRatio                 = resolutionWidth.val / resolutionHeight.val
+        resolutionWidth.half        = resolutionWidth.val * 0.5
+        resolutionHeight.half       = resolutionHeight.val * 0.5
+        resolutionWidth.clampRescale  = resolutionWidth.val  * 1
+        resolutionHeight.clampRescale = resolutionHeight.val * 1
+
+        trackerBox.sizeX            = options[trkIdx].boxSizeX
+        trackerBox.sizeHalfX        = options[trkIdx].boxSizeX * 0.5
+        trackerBox.sizeY            = options[trkIdx].boxSizeY
+        trackerBox.sizeHalfY        = options[trkIdx].boxSizeY * 0.5
+        trackerBox.offsetX          = options[trkIdx].boxOffsetX
+        trackerBox.offsetY          = options[trkIdx].boxOffsetY
+
+        resolutionWidth.clampBoxLowest  = -resolutionWidth.half  + trackerBox.sizeHalfX
+        resolutionWidth.clampBoxHighest =  resolutionWidth.half  - trackerBox.sizeHalfX
+        resolutionHeight.clampBoxLowest = -resolutionHeight.half + trackerBox.sizeHalfY +2
+        resolutionHeight.clampBoxHighest=  resolutionHeight.half - trackerBox.sizeHalfY -2
+        
+        local cameraZoom  = getCameraZoom()
+        if options.customFoVEnabled then
+            if     cameraZoom == 0 then
+                screenFov = math.rad( options.customFoV0 )
+            elseif cameraZoom == 1 then
+                screenFov = math.rad( options.customFoV1 )
+            elseif cameraZoom == 2 then
+                screenFov = math.rad( options.customFoV2 )
+            elseif cameraZoom == 3 then
+                screenFov = math.rad( options.customFoV3 )
+            elseif cameraZoom == 4 then
+                screenFov = math.rad( options.customFoV4 )
+            else
+                screenFov = 69 -- a good guess
+            end
+        else
+            screenFov     = math.rad( 
+                math.deg( 
+                    2*math.atan(0.56470588 * aspectRatio) -- 0.56470588 is 768/1360
+                ) - (cameraZoom-1) * 0.600 - clampVal(cameraZoom,0,1) * 0.300 -- the constant here should work for most to all aspect ratios between 1.25 to 1.77, gud enuff.
+            ) 
+        end
+        determinantScr    = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
     end
-    aspectRatio                 = resolutionWidth.val / resolutionHeight.val
-    resolutionWidth.half        = resolutionWidth.val * 0.5
-    resolutionHeight.half       = resolutionHeight.val * 0.5
-    resolutionWidth.clampRescale  = resolutionWidth.val  * 1
-    resolutionHeight.clampRescale = resolutionHeight.val * 1
-
-    trackerBox.sizeX            = options[trkIdx].boxSizeX
-    trackerBox.sizeHalfX        = options[trkIdx].boxSizeX * 0.5
-    trackerBox.sizeY            = options[trkIdx].boxSizeY
-    trackerBox.sizeHalfY        = options[trkIdx].boxSizeY * 0.5
-    trackerBox.offsetX          = options[trkIdx].boxOffsetX
-    trackerBox.offsetY          = options[trkIdx].boxOffsetY
-
-    resolutionWidth.clampBoxLowest  = -resolutionWidth.half  + trackerBox.sizeHalfX
-    resolutionWidth.clampBoxHighest =  resolutionWidth.half  - trackerBox.sizeHalfX
-    resolutionHeight.clampBoxLowest = -resolutionHeight.half + trackerBox.sizeHalfY
-    resolutionHeight.clampBoxHighest=  resolutionHeight.half - trackerBox.sizeHalfY
 end
-calcScreenResolutions("tracker1")
+
 
 local function present()
     local trkIdx = "tracker1"
@@ -1529,7 +1551,7 @@ local function present()
             windowTextSizes = {}
         end
         updateToolLookupTable()
-        calcScreenResolutions("tracker1")
+        calcScreenResolutions(true,trkIdx)
         SaveOptions(options)
         -- Update the delay too
         update_delay = options.updateThrottle
@@ -1545,7 +1567,7 @@ local function present()
 -- --needed?
 -- local myFloor = lib_characters.GetCurrentFloorSelf()
 -- --needed?
-
+    calcScreenResolutions(trkIdx)
     playerSelfAddr    = lib_characters.GetSelf()
     playerSelfCoords  = GetPlayerCoordinates(playerSelfAddr)
     playerSelfDirs    = GetPlayerDirection(playerSelfAddr)
@@ -1555,30 +1577,6 @@ local function present()
     eyeWorld          = mgl.vec3(cameraCoords.x, cameraCoords.y, cameraCoords.z)
     eyeDir            = mgl.vec3(  cameraDirs.x,   cameraDirs.y,   cameraDirs.z)
 
-    local cameraZoom  = getCameraZoom()
-    if options.customFoVEnabled then
-        if     cameraZoom == 0 then
-            screenFov = math.rad( options.customFoV0 )
-        elseif cameraZoom == 1 then
-            screenFov = math.rad( options.customFoV1 )
-        elseif cameraZoom == 2 then
-            screenFov = math.rad( options.customFoV2 )
-        elseif cameraZoom == 3 then
-            screenFov = math.rad( options.customFoV3 )
-        elseif cameraZoom == 4 then
-            screenFov = math.rad( options.customFoV4 )
-        else
-            screenFov = 69 -- a good guess
-        end
-    else
-        screenFov     = math.rad( 
-            math.deg( 
-                2*math.atan(0.56470588 * aspectRatio) -- 0.56470588 is 768/1360
-            ) - (cameraZoom-1) * 0.600 - clampVal(cameraZoom,0,1) * 0.300 -- the constant here should work for most to all aspect ratios between 1.25 to 1.77, gud enuff.
-        ) 
-    end
-    determinantScr    = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
-
     UpdateItemCache()
     UpdateInventoryCache()
     itemCount         = table.getn(cache_floor)
@@ -1586,6 +1584,7 @@ local function present()
     newInvToolLookupTable()
     updateInvToolLookupTable()
     local itemIdx = 0
+    local windowParams = { "NoTitleBar", "NoResize", "NoMove", "NoInputs", "NoSavedSettings" }
 
     for i=1, options.numTrackers, 1 do
         itemIdx = itemIdx + 1
@@ -1638,50 +1637,44 @@ local function present()
                     end
                 end
 
-                -- if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
-                --     imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
-                -- end
-
                 local wx, wy
                 local tx = windowTextSizes[textP].x
                 local ty = windowTextSizes[textP].y
+                local tyh = ty * 0.5
                 local wPadding = 6
+                local wPaddingh = wPadding * 0.5
+                local wPaddingd = wPadding * 2
 
-                if options[trkIdx].W < 1 then
-                    -- local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                    -- tx, ty = imgui.CalcTextSize(getUnWText(textC))
-                    wx = clampVal(tx, trackerBox.sizeX, tx) + wPadding
+                if options[trkIdx].W < 1 or options[trkIdx].AlwaysAutoResize then
+                    wx = clampVal(tx, trackerBox.sizeX, tx) + wPadding + 1
                 else
                     wx = options[trkIdx].W
                 end
-                if options[trkIdx].H < 1 then
-                    if not ty or ty < 1 then
-                        -- local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                        -- _, ty = imgui.CalcTextSize(getUnWText(textC))
-                    end
-                    wy = ty + trackerBox.sizeY + wPadding * 2 + 4
+                if options[trkIdx].H < 1 or options[trkIdx].AlwaysAutoResize then
+                    wy = ty + trackerBox.sizeY + wPaddingd + 4
                 else
                     wy = options[trkIdx].H
                 end
 
                 local sx, sy
+                sx = cache_floor[itemIdx].screenX + wPaddingh
+                sy = cache_floor[itemIdx].screenY - tyh
                 if options[trkIdx].clampItemView then
-                    sx = clampVal(  cache_floor[itemIdx].screenX, 
+                    sx = clampVal(  sx, 
                                     resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
-                    sy = clampVal(  cache_floor[itemIdx].screenY- ty*0.5,
-                                    resolutionHeight.clampBoxLowest +ty*0.5, resolutionHeight.clampBoxHighest-ty*0.5 )
+                    sy = clampVal(  sy,
+                                    resolutionHeight.clampBoxLowest + tyh, resolutionHeight.clampBoxHighest - tyh)
                 else
-                    sx = cache_floor[itemIdx].screenX
-                    sy = cache_floor[itemIdx].screenY - ty*0.5
+
                 end
 
                 local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5 ) -- 5 is "center" window anchor
                 imgui.SetNextWindowPos( ps[1], ps[2], "Always" )
-                --imgui.SetNextWindowSize( wx, wy, "Always" )
-
+                imgui.SetNextWindowSize( wx, wy, "Always" )
+                
                 local windowName = "DropBox Tracker - Hud" .. cache_floor[itemIdx].windowNameId
                 if imgui.Begin( windowName,
-                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", "AlwaysAutoResize"} )
+                    nil, windowParams )
                 then
                     if options[trkIdx].customFontScaleEnabled then
                         imgui.SetWindowFontScale(options[trkIdx].fontScale)
@@ -1725,7 +1718,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.3",
+        version = "0.2.4",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,

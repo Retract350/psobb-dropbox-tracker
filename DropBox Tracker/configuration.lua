@@ -754,6 +754,31 @@ local function ConfigurationWindow(configuration)
                 end
 
                 imgui.Text("Position and Size")
+
+                if imgui.Checkbox("Always Auto Resize", _configuration[trkIdx].AlwaysAutoResize) then
+                    _configuration[trkIdx].AlwaysAutoResize = not _configuration[trkIdx].AlwaysAutoResize
+                    _configuration[trkIdx].changed = true
+                    this.changed = true
+                end
+                if not _configuration[trkIdx].AlwaysAutoResize then
+                    imgui.PushItemWidth(100)
+                    success, _configuration[trkIdx].W = imgui.InputInt("Width", _configuration[trkIdx].W)
+                    imgui.PopItemWidth()
+                    if success then
+                        _configuration[trkIdx].changed = true
+                        this.changed = true
+                    end
+
+                    imgui.SameLine(0, 25)
+                    imgui.PushItemWidth(100)
+                    success, _configuration[trkIdx].H = imgui.InputInt("Height", _configuration[trkIdx].H)
+                    imgui.PopItemWidth()
+                    if success then
+                        _configuration[trkIdx].changed = true
+                        this.changed = true
+                    end
+                end
+                
                 imgui.PushItemWidth(100)
                 success, _configuration[trkIdx].boxOffsetX = imgui.InputInt("X Offset", _configuration[trkIdx].boxOffsetX)
                 imgui.PopItemWidth()
@@ -788,22 +813,6 @@ local function ConfigurationWindow(configuration)
                     this.changed = true
                 end
 
-                imgui.PushItemWidth(100)
-                success, _configuration[trkIdx].W = imgui.InputInt("Width", _configuration[trkIdx].W)
-                imgui.PopItemWidth()
-                if success then
-                    _configuration[trkIdx].changed = true
-                    this.changed = true
-                end
-
-                imgui.SameLine(0, 25)
-                imgui.PushItemWidth(100)
-                success, _configuration[trkIdx].H = imgui.InputInt("Height", _configuration[trkIdx].H)
-                imgui.PopItemWidth()
-                if success then
-                    _configuration[trkIdx].changed = true
-                    this.changed = true
-                end
                 imgui.TreePop()
             end
         end
