@@ -230,6 +230,12 @@ local function ConfigurationWindow(configuration)
                             this.changed = true
                         end
                     end
+                    if Additional.includeSpecial then
+                        if imgui.Checkbox("Show Special in Name", cateTabl.includeSpecial) then
+                            cateTabl.includeSpecial = not cateTabl.includeSpecial
+                            this.changed = true
+                        end
+                    end
                     if Additional.includeStats then
                         if imgui.Checkbox("Show Stats in Name", cateTabl.includeStats) then
                             cateTabl.includeStats = not cateTabl.includeStats
@@ -584,6 +590,7 @@ local function ConfigurationWindow(configuration)
                         local AdditionalW = {
                             includeAtrributes = true,
                             includeHit = true,
+                            includeSpecial = true,
                         }
                         local AdditionalA = {
                             includeStats = true,
@@ -631,6 +638,7 @@ local function ConfigurationWindow(configuration)
                         local AdditionalW = {
                             includeAtrributes = true,
                             includeHit = true,
+                            includeSpecial = true,
                         }
                         local AdditionalA = {
                             includeStats = true,
@@ -778,7 +786,7 @@ local function ConfigurationWindow(configuration)
                         this.changed = true
                     end
                 end
-                
+
                 imgui.PushItemWidth(100)
                 success, _configuration[trkIdx].boxOffsetX = imgui.InputInt("X Offset", _configuration[trkIdx].boxOffsetX)
                 imgui.PopItemWidth()

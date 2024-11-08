@@ -1,6 +1,7 @@
 local core_mainmenu = require("core_mainmenu")
 local lib_helpers = require("solylib.helpers")
 local lib_characters = require("solylib.characters")
+local lib_unitxt = require("solylib.unitxt")
 local lib_items = require("solylib.items.items")
 local lib_menu = require("solylib.menu")
 local lib_items_list = require("solylib.items.items_list")
@@ -162,6 +163,7 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx][cate], "showName", true)
         SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
         SetDefaultValue(options[trkIdx][cate], "includeHit", true)
+        SetDefaultValue(options[trkIdx][cate], "includeSpecial", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", false)
@@ -187,6 +189,7 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx][cate], "showName", true)
         SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
         SetDefaultValue(options[trkIdx][cate], "includeHit", true)
+        SetDefaultValue(options[trkIdx][cate], "includeSpecial", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 1)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -197,6 +200,7 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx][cate], "showName", true)
         SetDefaultValue(options[trkIdx][cate], "includeAtrributes", true)
         SetDefaultValue(options[trkIdx][cate], "includeHit", true)
+        SetDefaultValue(options[trkIdx][cate], "includeSpecial", true)
         SetDefaultValue(options[trkIdx][cate], "showBox", true)
         SetDefaultValue(options[trkIdx][cate], "borderSize", 6)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
@@ -953,6 +957,33 @@ local function AddWeaponAtrributes(item,showAtribs,showHit)
         end
     end
 end
+local function AddWeaponSpecial(item,showSpecial)
+    if not item.wName or type(options) ~= "table" then
+        item.wName = {}
+    end
+
+    if showSpecial then
+        local hasSpecial = false
+        local rankText, clr
+        if item.weapon.isSRank and item.weapon.specialSRank ~= 0 then
+            hasSpecial = true
+            rankText = lib_unitxt.GetSRankSpecialName(item.weapon.specialSRank)
+            clr      = lib_items_cfg.weaponSRankSpecial[item.weapon.specialSRank]
+        elseif item.weapon.special ~= 0 then
+            hasSpecial = true
+            rankText = lib_unitxt.GetSpecialName(item.weapon.special)
+            clr      = lib_items_cfg.weaponSpecial[item.weapon.special + 1]
+        end
+            
+        if hasSpecial then
+            clr      = lib_helpers.GetColorAsFloats(clr)
+            table.insert(item.wName, { " [", nil })
+            table.insert(item.wName, { rankText, {clr.a, clr.r, clr.g, clr.b} })
+            table.insert(item.wName, { "]", nil })
+        end
+    end
+
+end
 local function AddArmorStats(item,showStats,showSlots,highlightMaxStats)
     local colorGrey = {1.0, 0.4706, 0.4706, 0.4706}
 
@@ -1020,12 +1051,14 @@ local function ProcessWeapon(item, floor, trkIdx)
     if item.weapon.isSRank == false then
         if item_cfg ~= nil and item_cfg[1] ~= 0 then
             item.wName = { { item.name, nil } }
+            AddWeaponSpecial(item,options[trkIdx]["RareWeapon"].includeSpecial)
             AddWeaponAtrributes(item,options[trkIdx]["RareWeapon"].includeAtrributes,options[trkIdx]["RareWeapon"].includeHit)
             ItemAppendVisibilityData( options[trkIdx]["RareWeapon"], item, trkIdx )
         elseif floor then
             -- Hide weapon drops with less then xxHit (40 default) untekked
             if item.weapon.stats[6] >= options[trkIdx].HighHitCommonWeapon.HitMin then
                 item.wName = { { item.name, nil } }
+                AddWeaponSpecial(item,options[trkIdx]["HighHitCommonWeapon"].includeSpecial)
                 AddWeaponAtrributes(item,options[trkIdx]["HighHitCommonWeapon"].includeAtrributes,options[trkIdx]["HighHitCommonWeapon"].includeHit)
                 ItemAppendVisibilityData( options[trkIdx]["HighHitCommonWeapon"], item, trkIdx )
             -- Show Claire's Deal 5 items
@@ -1033,6 +1066,7 @@ local function ProcessWeapon(item, floor, trkIdx)
                 ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
             elseif item.weapon.stats[6] < options[trkIdx].HighHitCommonWeapon.HitMin then
                 item.wName = { { item.name, nil } }
+                AddWeaponSpecial(item,options[trkIdx]["LowHitCommonWeapon"].includeSpecial)
                 AddWeaponAtrributes(item,options[trkIdx]["LowHitCommonWeapon"].includeAtrributes,options[trkIdx]["LowHitCommonWeapon"].includeHit)
                 ItemAppendVisibilityData( options[trkIdx]["LowHitCommonWeapon"], item, trkIdx )
             end            
@@ -1472,29 +1506,29 @@ end
 local function calcScreenResolutions(trkIdx, forced)
     if forced or not resolutionWidth.val or not resolutionHeight.val then
         if options.customScreenResEnabled then
-            resolutionWidth.val     = options.customScreenResX
-            resolutionHeight.val    = options.customScreenResY
+            resolutionWidth.val          = options.customScreenResX
+            resolutionHeight.val         = options.customScreenResY
         else
-            resolutionWidth.val     = lib_helpers.GetResolutionWidth()
-            resolutionHeight.val    = lib_helpers.GetResolutionHeight()
+            resolutionWidth.val          = lib_helpers.GetResolutionWidth()
+            resolutionHeight.val         = lib_helpers.GetResolutionHeight()
         end
-        aspectRatio                 = resolutionWidth.val / resolutionHeight.val
-        resolutionWidth.half        = resolutionWidth.val * 0.5
-        resolutionHeight.half       = resolutionHeight.val * 0.5
-        resolutionWidth.clampRescale  = resolutionWidth.val  * 1
-        resolutionHeight.clampRescale = resolutionHeight.val * 1
+        aspectRatio                      = resolutionWidth.val / resolutionHeight.val
+        resolutionWidth.half             = resolutionWidth.val * 0.5
+        resolutionHeight.half            = resolutionHeight.val * 0.5
+        resolutionWidth.clampRescale     = resolutionWidth.val  * 1
+        resolutionHeight.clampRescale    = resolutionHeight.val * 1
 
-        trackerBox.sizeX            = options[trkIdx].boxSizeX
-        trackerBox.sizeHalfX        = options[trkIdx].boxSizeX * 0.5
-        trackerBox.sizeY            = options[trkIdx].boxSizeY
-        trackerBox.sizeHalfY        = options[trkIdx].boxSizeY * 0.5
-        trackerBox.offsetX          = options[trkIdx].boxOffsetX
-        trackerBox.offsetY          = options[trkIdx].boxOffsetY
+        trackerBox.sizeX                 = options[trkIdx].boxSizeX
+        trackerBox.sizeHalfX             = options[trkIdx].boxSizeX * 0.5
+        trackerBox.sizeY                 = options[trkIdx].boxSizeY
+        trackerBox.sizeHalfY             = options[trkIdx].boxSizeY * 0.5
+        trackerBox.offsetX               = options[trkIdx].boxOffsetX
+        trackerBox.offsetY               = options[trkIdx].boxOffsetY
 
-        resolutionWidth.clampBoxLowest  = -resolutionWidth.half  + trackerBox.sizeHalfX
-        resolutionWidth.clampBoxHighest =  resolutionWidth.half  - trackerBox.sizeHalfX
-        resolutionHeight.clampBoxLowest = -resolutionHeight.half + trackerBox.sizeHalfY +2
-        resolutionHeight.clampBoxHighest=  resolutionHeight.half - trackerBox.sizeHalfY -2
+        resolutionWidth.clampBoxLowest   = -resolutionWidth.half  + trackerBox.sizeHalfX
+        resolutionWidth.clampBoxHighest  =  resolutionWidth.half  - trackerBox.sizeHalfX
+        resolutionHeight.clampBoxLowest  = -resolutionHeight.half + trackerBox.sizeHalfY + 2
+        resolutionHeight.clampBoxHighest =  resolutionHeight.half - trackerBox.sizeHalfY - 2
         
         local cameraZoom  = getCameraZoom()
         if options.customFoVEnabled then
@@ -1512,13 +1546,13 @@ local function calcScreenResolutions(trkIdx, forced)
                 screenFov = 69 -- a good guess
             end
         else
-            screenFov     = math.rad( 
+            screenFov = math.rad( 
                 math.deg( 
                     2*math.atan(0.56470588 * aspectRatio) -- 0.56470588 is 768/1360
                 ) - (cameraZoom-1) * 0.600 - clampVal(cameraZoom,0,1) * 0.300 -- the constant here should work for most to all aspect ratios between 1.25 to 1.77, gud enuff.
             ) 
         end
-        determinantScr    = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
+        determinantScr = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
     end
 end
 
@@ -1718,7 +1752,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.5",
+        version = "0.2.6",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
