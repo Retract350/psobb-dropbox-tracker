@@ -1275,8 +1275,10 @@ local lastnumTrackers = options.numTrackers
 local firstLoad = true
 local last_inventory_index = -1
 local last_inventory_time = 0
+local lastFontScale = options["tracker1"].fontScale
 local cache_inventory = nil
 local invItemCount = 0
+local windowTextSizes = {}
 
 local function sortByDistanceP(a,b)
     return a.curPlayerDistance < b.curPlayerDistance
@@ -1500,6 +1502,8 @@ end
 calcScreenResolutions("tracker1")
 
 local function present()
+    local trkIdx = "tracker1"
+
     -- If the addon has never been used, open the config window
     -- and disable the config window setting
     if options.configurationEnableWindow then
@@ -1513,6 +1517,16 @@ local function present()
         if options.numTrackers > lastnumTrackers then
             LoadOptions()
             lastnumTrackers = options.numTrackers
+        end
+        local curFontScale
+        if options[trkIdx].customFontScaleEnabled then
+            curFontScale = options[trkIdx].fontScale
+        else
+            curFontScale = 1.0
+        end
+        if lastFontScale ~= curFontScale then
+            lastFontScale = curFontScale
+            windowTextSizes = {}
         end
         updateToolLookupTable()
         calcScreenResolutions("tracker1")
@@ -1572,7 +1586,6 @@ local function present()
     newInvToolLookupTable()
     updateInvToolLookupTable()
     local itemIdx = 0
-    local trkIdx = "tracker1"
 
     for i=1, options.numTrackers, 1 do
         itemIdx = itemIdx + 1
@@ -1598,56 +1611,83 @@ local function present()
                     imgui.PushStyleColor("WindowBg", 0.0, 0.0, 0.0, 0.0)
                 end
 
-                if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
-                    imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
+                local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
+                local textP = getUnWText(textC)
+                if options[trkIdx].customFontScaleEnabled then -- get text width and height for every item name text
+                    local tx, ty
+                    if not windowTextSizes[textP] then
+                        if imgui.Begin( "##DropBox Tracker - FontDummy",
+                            nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", "NoSavedSettings" } )
+                        then
+                            imgui.SetWindowFontScale(options[trkIdx].fontScale)
+                            tx, ty = imgui.CalcTextSize(textP)
+                            windowTextSizes[textP] = {
+                                x = tx,
+                                y = ty,
+                            }
+                        end
+                        imgui.End()
+                    end
+                else
+                    if not windowTextSizes[textP] then
+                        tx, ty = imgui.CalcTextSize(textP)
+                        windowTextSizes[textP] = {
+                            x = tx,
+                            y = ty,
+                        }
+                    end
                 end
-            
+
+                -- if options[trkIdx].AlwaysAutoResize == "AlwaysAutoResize" then
+                --     imgui.SetNextWindowSizeConstraints(0, 0, options[trkIdx].W, options[trkIdx].H)
+                -- end
+
+                local wx, wy
+                local tx = windowTextSizes[textP].x
+                local ty = windowTextSizes[textP].y
+                local wPadding = 6
+
+                if options[trkIdx].W < 1 then
+                    -- local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
+                    -- tx, ty = imgui.CalcTextSize(getUnWText(textC))
+                    wx = clampVal(tx, trackerBox.sizeX, tx) + wPadding
+                else
+                    wx = options[trkIdx].W
+                end
+                if options[trkIdx].H < 1 then
+                    if not ty or ty < 1 then
+                        -- local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
+                        -- _, ty = imgui.CalcTextSize(getUnWText(textC))
+                    end
+                    wy = ty + trackerBox.sizeY + wPadding * 2 + 4
+                else
+                    wy = options[trkIdx].H
+                end
+
+                local sx, sy
+                if options[trkIdx].clampItemView then
+                    sx = clampVal(  cache_floor[itemIdx].screenX, 
+                                    resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
+                    sy = clampVal(  cache_floor[itemIdx].screenY- ty*0.5,
+                                    resolutionHeight.clampBoxLowest +ty*0.5, resolutionHeight.clampBoxHighest-ty*0.5 )
+                else
+                    sx = cache_floor[itemIdx].screenX
+                    sy = cache_floor[itemIdx].screenY - ty*0.5
+                end
+
+                local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5 ) -- 5 is "center" window anchor
+                imgui.SetNextWindowPos( ps[1], ps[2], "Always" )
+                --imgui.SetNextWindowSize( wx, wy, "Always" )
+
                 local windowName = "DropBox Tracker - Hud" .. cache_floor[itemIdx].windowNameId
                 if imgui.Begin( windowName,
-                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", } )
+                    nil, { "NoTitleBar", "NoResize", "NoMove", "NoInputs", "AlwaysAutoResize"} )
                 then
                     if options[trkIdx].customFontScaleEnabled then
                         imgui.SetWindowFontScale(options[trkIdx].fontScale)
                     else
                         imgui.SetWindowFontScale(1.0)
                     end
-
-                    local wx, wy
-                    local tx = 0
-                    local ty = 0
-                    local wPadding = 6
-                    if options[trkIdx].W < 1 then
-                        local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                        tx, ty = imgui.CalcTextSize(getUnWText(textC))
-                        wx = clampVal(tx, trackerBox.sizeX, tx) + wPadding
-                    else
-                        wx = options[trkIdx].W
-                    end
-                    if options[trkIdx].H < 1 then
-                        if not ty or ty < 1 then
-                            local textC = getWText(cache_floor[itemIdx].wName, cache_floor[itemIdx].name)
-                            _, ty = imgui.CalcTextSize(getUnWText(textC))
-                        end
-                        wy = ty + trackerBox.sizeY + wPadding * 2 + 4
-                    else
-                        wy = options[trkIdx].H
-                    end
-
-                    local sx, sy
-                    if options[trkIdx].clampItemView then
-                        sx = clampVal(  cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX, 
-                                        resolutionWidth.clampBoxLowest, resolutionWidth.clampBoxHighest )
-                        sy = clampVal(  cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY - ty*0.5,
-                                        resolutionHeight.clampBoxLowest +ty*0.5, resolutionHeight.clampBoxHighest-ty*0.5 )
-                    else
-                        sx = cache_floor[itemIdx].screenX + options[trkIdx].boxOffsetX
-                        sy = cache_floor[itemIdx].screenY + options[trkIdx].boxOffsetY - ty*0.5
-                    end
-    
-                    local ps =  lib_helpers.GetPosBySizeAndAnchor( sx, sy, wx, wy, 5 ) -- 5 is "center" window anchor
-
-                    imgui.SetWindowPos( windowName, ps[1], ps[2], "Always" )
-                    imgui.SetWindowSize( windowName, wx, wy, "Always" )
                     PresentBoxTracker(cache_floor[itemIdx],trkIdx,itemIdx)
                 end
                 imgui.End()
@@ -1685,7 +1725,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.2",
+        version = "0.2.3",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
