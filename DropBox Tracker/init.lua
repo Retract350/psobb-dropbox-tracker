@@ -605,6 +605,8 @@ local aspectRatio = nil
 local eyeWorld    = nil
 local eyeDir      = nil
 local determinantScr = nil
+local cameraZoom = nil
+local lastCameraZoom = nil
 local trackerWindowLookup = {}
 
 local _CameraPosX      = 0x00A48780
@@ -1529,8 +1531,14 @@ local function calcScreenResolutions(trkIdx, forced)
         resolutionWidth.clampBoxHighest  =  resolutionWidth.half  - trackerBox.sizeHalfX
         resolutionHeight.clampBoxLowest  = -resolutionHeight.half + trackerBox.sizeHalfY + 2
         resolutionHeight.clampBoxHighest =  resolutionHeight.half - trackerBox.sizeHalfY - 2
-        
-        local cameraZoom  = getCameraZoom()
+    end
+end
+local function calcScreenFoV(trkIdx, forced)
+    if not aspectRatio or not cameraZoom or not resolutionHeight.val then
+        calcScreenResolutions(trkIdx, forced)
+    end
+    print(cameraZoom)
+    if forced or cameraZoom ~= lastCameraZoom then
         if options.customFoVEnabled then
             if     cameraZoom == 0 then
                 screenFov = math.rad( options.customFoV0 )
@@ -1553,6 +1561,7 @@ local function calcScreenResolutions(trkIdx, forced)
             ) 
         end
         determinantScr = aspectRatio * 3 * resolutionHeight.val / ( 6 * math.tan( 0.5 * screenFov ) )
+        lastCameraZoom = CameraZoom
     end
 end
 
@@ -1586,6 +1595,7 @@ local function present()
         end
         updateToolLookupTable()
         calcScreenResolutions(trkIdx, true)
+        calcScreenFoV(trkIdx, true)
         SaveOptions(options)
         -- Update the delay too
         update_delay = options.updateThrottle
@@ -1601,7 +1611,9 @@ local function present()
 -- --needed?
 -- local myFloor = lib_characters.GetCurrentFloorSelf()
 -- --needed?
+    cameraZoom        = getCameraZoom()
     calcScreenResolutions(trkIdx)
+    calcScreenFoV(trkIdx)
     playerSelfAddr    = lib_characters.GetSelf()
     playerSelfCoords  = GetPlayerCoordinates(playerSelfAddr)
     playerSelfDirs    = GetPlayerDirection(playerSelfAddr)
@@ -1676,7 +1688,7 @@ local function present()
                 local ty = windowTextSizes[textP].y
                 local tyh = ty * 0.5
                 local wPadding = 6
-                local wPaddingh = wPadding * 0.5
+                local wPaddingh = wPadding * 0.5 - 2
                 local wPaddingd = wPadding * 2
 
                 if options[trkIdx].W < 1 or options[trkIdx].AlwaysAutoResize then
@@ -1752,7 +1764,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.6",
+        version = "0.2.7",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
