@@ -1469,7 +1469,7 @@ local function PresentBoxTracker(item,trkIdx,curCount)
     end
 end
 
-local function calcScreenResolutions(forced,trkIdx)
+local function calcScreenResolutions(trkIdx, forced)
     if forced or not resolutionWidth.val or not resolutionHeight.val then
         if options.customScreenResEnabled then
             resolutionWidth.val     = options.customScreenResX
@@ -1551,7 +1551,7 @@ local function present()
             windowTextSizes = {}
         end
         updateToolLookupTable()
-        calcScreenResolutions(true,trkIdx)
+        calcScreenResolutions(trkIdx, true)
         SaveOptions(options)
         -- Update the delay too
         update_delay = options.updateThrottle
@@ -1718,7 +1718,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.4",
+        version = "0.2.5",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
