@@ -85,7 +85,7 @@ local function LoadOptions()
         SetDefaultValue( options[trkIdx], "showNameClosestItemsNum", 5 )
         SetDefaultValue( options[trkIdx], "showNameClosestDist", 130 )
         SetDefaultValue( options[trkIdx], "clampItemView", true )
-        SetDefaultValue( options[trkIdx], "ignoreItemMaxDist", 450 )
+        SetDefaultValue( options[trkIdx], "ignoreItemMaxDist", 420 )
 
         if options[trkIdx].category == nil or type(options[trkIdx].category) ~= "table" then
             options[trkIdx].category = {}
@@ -1157,7 +1157,7 @@ local function ProcessBarrier(item, floor, trkIdx)
             ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
         else
             item.wName = { { item.name, nil } }
-            AddArmorStats(item, options[trkIdx]["RareBarrier"].includeStats,false,options[trkIdx]["RareBarrier"].highlightMaxStats)
+            AddArmorStats(item, options[trkIdx]["CommonBarrier"].includeStats,false,options[trkIdx]["CommonBarrier"].highlightMaxStats)
             ItemAppendVisibilityData( options[trkIdx]["CommonBarrier"], item, trkIdx )
         end
     end
@@ -1806,7 +1806,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.8",
+        version = "0.2.9",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
