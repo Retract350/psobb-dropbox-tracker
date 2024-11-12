@@ -99,6 +99,7 @@ local function LoadOptions()
             "CommonBarrier",
             "CommonUnit",
             "CommonTech",
+            "MusicDisk",
             "Meseta",
             "RareWeapon",
             "ESWeapon",
@@ -185,7 +186,18 @@ local function LoadOptions()
         SetDefaultValue(options[trkIdx][cate], "borderSize", 2)
         SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
         SetDefaultValue(options[trkIdx][cate], "customBorderColor", -795092)
-        
+
+        cate = "MusicDisk"
+        SetDefaultValue(options[trkIdx][cate], "enabled", true)
+        SetDefaultValue(options[trkIdx][cate], "showName", true)
+        SetDefaultValue(options[trkIdx][cate], "showBox", true)
+        SetDefaultValue(options[trkIdx][cate], "borderSize", 2)
+        SetDefaultValue(options[trkIdx][cate], "useCustomColor", true)
+        SetDefaultValue(options[trkIdx][cate], "customBorderColor", -8226174)
+        for i=1, 25, 1 do
+            SetDefaultValue(options[trkIdx][cate], "showDisk" .. i, true)
+        end
+
         cate = "RareWeapon"
         SetDefaultValue(options[trkIdx][cate], "enabled", true)
         SetDefaultValue(options[trkIdx][cate], "showName", true)
@@ -637,6 +649,7 @@ local cameraNormDirVec3 = nil
 local item_graph_data = {}
 local toolLookupTable = {}
 local invToolLookupTable = {}
+local musicDiskLookupTable = {}
 local resolutionWidth = {}
 local resolutionHeight = {}
 local trackerBox = {}
@@ -738,6 +751,38 @@ local function newInvToolLookupTable()
         },
     }
 end
+
+local function updateMusicDiskLookupTable()
+    local trkIdx = "tracker1"
+    musicDiskLookupTable[trkIdx] = {
+        [0x031600] = {'Disk Vol.1 "Wedding March"',                 options[trkIdx]["MusicDisk"].showDisk1},
+        [0x031601] = {'Disk Vol.2 "Day Light"',                     options[trkIdx]["MusicDisk"].showDisk2},
+        [0x031602] = {'Disk Vol.3 "Burning Rangers"',               options[trkIdx]["MusicDisk"].showDisk3},
+        [0x031603] = {'Disk Vol.4 "Open Your Heart"',               options[trkIdx]["MusicDisk"].showDisk4},
+        [0x031604] = {'Disk Vol.5 "Live & Learn"',                  options[trkIdx]["MusicDisk"].showDisk5},
+        [0x031605] = {'Disk Vol.6 "NiGHTS"',                        options[trkIdx]["MusicDisk"].showDisk6},
+        [0x031606] = {'Disk Vol.7 "Ending Theme (Piano ver.)"',     options[trkIdx]["MusicDisk"].showDisk7},
+        [0x031607] = {'Disk Vol.8 "Heart to Heart"',                options[trkIdx]["MusicDisk"].showDisk8},
+        [0x031608] = {'Disk Vol.9 "Strange Blue"',                  options[trkIdx]["MusicDisk"].showDisk9},
+        [0x031609] = {'Disk Vol.10 "Reunion System"',               options[trkIdx]["MusicDisk"].showDisk10},
+        [0x03160A] = {'Disk Vol.11 "Pinnacles"',                    options[trkIdx]["MusicDisk"].showDisk11},
+        [0x03160B] = {'Disk Vol.12 "Fight inside the Spaceship"',   options[trkIdx]["MusicDisk"].showDisk12},
+        [0x03160C] = {'Disk Vol.13 "Get It Up"',                    options[trkIdx]["MusicDisk"].showDisk13},
+        [0x03160D] = {'Disk Vol.14 "Flight"',                       options[trkIdx]["MusicDisk"].showDisk14},
+        [0x03160E] = {'Disk Vol.15 "Space Harrier"',                options[trkIdx]["MusicDisk"].showDisk15},
+        [0x03160F] = {'Disk Vol.16 "Deathwatch"',                   options[trkIdx]["MusicDisk"].showDisk16},
+        [0x031610] = {'Disk Vol.17 "Fly Me To The Moon"',           options[trkIdx]["MusicDisk"].showDisk17},
+        [0x031611] = {'Disk Vol.18 "Puyo Puyo"',                    options[trkIdx]["MusicDisk"].showDisk18},
+        [0x031612] = {'Disk Vol.19 "Rhythm And Balance"',           options[trkIdx]["MusicDisk"].showDisk19},
+        [0x031613] = {'Disk Vol.20 "The Party Must Go On"',         options[trkIdx]["MusicDisk"].showDisk20},
+        [0x031614] = {'Disk Vol.21 "Armada Battle"',                options[trkIdx]["MusicDisk"].showDisk21},
+        [0x031615] = {'Disk Vol.22 "Back 2 Back"',                  options[trkIdx]["MusicDisk"].showDisk22},
+        [0x031616] = {'Disk Vol.23 "The Strange Fruits"',           options[trkIdx]["MusicDisk"].showDisk23},
+        [0x031617] = {'Disk Vol.24 "The Whims of Fate"',            options[trkIdx]["MusicDisk"].showDisk24},
+        [0x031618] = {'Disk Vol.25 "Last Impression"',              options[trkIdx]["MusicDisk"].showDisk25},
+    }
+end
+updateMusicDiskLookupTable()
 
 local function GetPlayerCoordinates(player)
     local x = 0
@@ -1291,6 +1336,11 @@ local function ProcessTool(item, floor, trkIdx)
                     end
                 end
             end
+        elseif musicDiskLookupTable[trkIdx][item.hex] ~= nil then
+            if not musicDiskLookupTable[trkIdx][item.hex][2] then
+                item.screenShouldNotShow = true
+            end
+            ItemAppendVisibilityData( options[trkIdx]["MusicDisk"], item, trkIdx )
         else
             ItemAppendVisibilityData( options[trkIdx]["RareConsumables"], item, trkIdx )
         end
@@ -1636,6 +1686,7 @@ local function present()
             windowTextSizes = {}
         end
         updateToolLookupTable()
+        updateMusicDiskLookupTable()
         calcScreenResolutions(trkIdx, true)
         calcScreenFoV(trkIdx, true)
         SaveOptions(options)
@@ -1806,7 +1857,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.2.9",
+        version = "0.3.0",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,

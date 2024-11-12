@@ -19,6 +19,34 @@ local function shiftHexColor(color)
     }
 end
 
+local musicDiskList = {
+    'Disk Vol.1 "Wedding March"',
+    'Disk Vol.2 "Day Light"',
+    'Disk Vol.3 "Burning Rangers"',
+    'Disk Vol.4 "Open Your Heart"',
+    'Disk Vol.5 "Live & Learn"',
+    'Disk Vol.6 "NiGHTS"',
+    'Disk Vol.7 "Ending Theme (Piano ver.)"',
+    'Disk Vol.8 "Heart to Heart"',
+    'Disk Vol.9 "Strange Blue"',
+    'Disk Vol.10 "Reunion System"',
+    'Disk Vol.11 "Pinnacles"',
+    'Disk Vol.12 "Fight inside the Spaceship"',
+    'Disk Vol.13 "Get It Up"',
+    'Disk Vol.14 "Flight"',
+    'Disk Vol.15 "Space Harrier"',
+    'Disk Vol.16 "Deathwatch"',
+    'Disk Vol.17 "Fly Me To The Moon"',
+    'Disk Vol.18 "Puyo Puyo"',
+    'Disk Vol.19 "Rhythm And Balance"',
+    'Disk Vol.20 "The Party Must Go On"',
+    'Disk Vol.21 "Armada Battle"',
+    'Disk Vol.22 "Back 2 Back"',
+    'Disk Vol.23 "The Strange Fruits"',
+    'Disk Vol.24 "The Whims of Fate"',
+    'Disk Vol.25 "Last Impression"',
+}
+
 local function ConfigurationWindow(configuration)
     local this =
     {
@@ -264,6 +292,18 @@ local function ConfigurationWindow(configuration)
                         if imgui.Checkbox("Only Show When Inventory Contains One or More", cateTabl.onlyShowWhenOneOrMoreInInv) then
                             cateTabl.onlyShowWhenOneOrMoreInInv = not cateTabl.onlyShowWhenOneOrMoreInInv
                             this.changed = true
+                        end
+                    end
+                    if Additional.includeMusicSelection then
+                        if imgui.TreeNodeEx("Music Disk Selection") then
+                            for k,v in pairs(musicDiskList) do
+                                prop = "showDisk" .. k
+                                if imgui.Checkbox(v, cateTabl[prop]) then
+                                    cateTabl[prop] = not cateTabl[prop]
+                                    this.changed = true
+                                end
+                            end
+                            imgui.TreePop()
                         end
                     end
                 end
@@ -618,6 +658,8 @@ local function ConfigurationWindow(configuration)
                         dropPreview("Common Barriers", "CommonBarrier", trkIdx, AdditionalB)
                         dropPreview("Common Units", "CommonUnit", trkIdx)
                         dropPreview("Low Techs", "CommonTech", trkIdx)
+                        
+                        dropPreview("Music Disks", "MusicDisk", trkIdx, {includeMusicSelection = true})
                         
                         if not _configuration.ignoreMeseta then
                             
