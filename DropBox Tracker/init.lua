@@ -1430,8 +1430,8 @@ local function UpdateItemCache()
         local cache_floor_notracker = {}
         local usedWindowNameIdLookup = {}
         local windowNameIdCurIdx = 1
-        local function nextWindowNameId()
-            for i=windowNameIdCurIdx, options.numTrackers, 1 do
+        local function nextWindowNameId() -- find the next available windowNameId to use, which wasn't taken last game frame
+            for i=windowNameIdCurIdx, #cache_floor, 1 do
                 if not usedWindowNameIdLookup[i] then
                     windowNameIdCurIdx = 1 + i
                     return i
@@ -1439,30 +1439,23 @@ local function UpdateItemCache()
                 windowNameIdCurIdx = i
             end
         end
-        for i=1, #cache_floor, 1 do
-            if trackerNum > options.numTrackers then break end
+        for i=1, #cache_floor, 1 do -- reassign windowNameIds from last game frame, which is needed to keep the boxes from looking "glichy" and "hopping around"
             local item = cache_floor[i]
             local windowNameId = prevTrackerWindowLookup[item.id]
             if windowNameId then
                 usedWindowNameIdLookup[windowNameId] = true
                 trackerWindowLookup[item.id] = windowNameId
                 item.windowNameId = windowNameId
-                trackerNum = trackerNum + 1
             else
                 table.insert(cache_floor_notracker, item)
             end
         end
-        -- assign a tracker window to an item
-        for i=1, #cache_floor_notracker, 1 do
-            if trackerNum > options.numTrackers then break end
+        for i=1, #cache_floor_notracker, 1 do -- assign a tracker window to an item that didn't have one previously
             local item = cache_floor_notracker[i]
             local windowNameId = nextWindowNameId()
             if windowNameId then
                 trackerWindowLookup[item.id] = windowNameId
                 item.windowNameId = windowNameId
-                trackerNum = trackerNum + 1
-            else
-                break -- no more trackers
             end
         end
         last_floor_time = current_time
@@ -1723,9 +1716,11 @@ local function present()
     newInvToolLookupTable()
     updateInvToolLookupTable()
     local itemIdx = 0
+    local trackerIdx = 0
     local windowParams = { "NoTitleBar", "NoResize", "NoMove", "NoInputs", "NoSavedSettings" }
 
-    for i=1, options.numTrackers, 1 do
+    
+    while trackerIdx < options.numTrackers do
         itemIdx = itemIdx + 1
         if itemIdx > options.numTrackers or itemIdx > itemCount or itemCount < 1 then break end
 
@@ -1735,6 +1730,7 @@ local function present()
             and (options[trkIdx].HideWhenMenuUnavailable == false or lib_menu.IsMenuUnavailable() == false)
         then
             if cache_floor[itemIdx].screenShow then
+                trackerIdx = trackerIdx + 1
 
                 if options[trkIdx].customTrackerColorEnable == true then
                     local FrameBgColor  = shiftHexColor(options[trkIdx].customTrackerColorBackground)
@@ -1811,6 +1807,9 @@ local function present()
                 imgui.SetNextWindowPos( ps[1], ps[2], "Always" )
                 imgui.SetNextWindowSize( wx, wy, "Always" )
                 
+                if not cache_floor[itemIdx].windowNameId then -- safeguard against bad code to prevent crashing. should be fixed before this, but just incase.
+                    cache_floor[itemIdx].windowNameId = cache_floor[itemIdx].id
+                end
                 local windowName = "DropBox Tracker - Hud" .. cache_floor[itemIdx].windowNameId
                 if imgui.Begin( windowName,
                     nil, windowParams )
@@ -1857,7 +1856,7 @@ local function init()
     return
     {
         name = "Dropbox Tracker",
-        version = "0.3.0",
+        version = "0.3.1",
         author = "X9Z0.M2",
         description = "Onscreen Drop tracking to let you see which drops are important loot.",
         present = present,
