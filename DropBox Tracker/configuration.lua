@@ -648,6 +648,11 @@ local function ConfigurationWindow(configuration)
                         if success then
                             this.changed = true
                         end
+
+                        if imgui.Checkbox("Uptekk Hit%", _configuration.UptekkHit) then
+                            _configuration.UptekkHit = not _configuration.UptekkHit
+                            this.changed = true
+                        end
                         
                         dropPreview("Low Hit Weapons", "LowHitCommonWeapon", trkIdx, AdditionalW)
                         dropPreview("High Hit Weapons", "HighHitCommonWeapon", trkIdx, AdditionalW)

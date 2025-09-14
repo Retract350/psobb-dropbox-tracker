@@ -40,6 +40,7 @@ local function LoadOptions()
     -- If options loaded, make sure we have all those we need
     SetDefaultValue( options, "configurationEnableWindow", true )
     SetDefaultValue( options, "enable", true )
+    SetDefaultValue( options, "UptekkHit", false )
     SetDefaultValue( options, "ignoreMeseta", false )
     SetDefaultValue( options, "maxNumTrackers", 100 )
     SetDefaultValue( options, "numTrackers", 25 )
@@ -1148,7 +1149,12 @@ local function ProcessWeapon(item, floor, trkIdx)
                 AddWeaponSpecial(item,options[trkIdx]["HighHitCommonWeapon"].includeSpecial)
                 AddWeaponAtrributes(item,options[trkIdx]["HighHitCommonWeapon"].includeAtrributes,options[trkIdx]["HighHitCommonWeapon"].includeHit)
                 ItemAppendVisibilityData( options[trkIdx]["HighHitCommonWeapon"], item, trkIdx )
-            -- Show Claire's Deal 5 items
+            elseif options.UptekkHit and item.weapon.untekked and item.weapon.stats[6] > 0 and item.weapon.stats[6] >= options[trkIdx].HighHitCommonWeapon.HitMin - 10 then
+                    item.wName = { { item.name, nil } }
+                    AddWeaponSpecial(item,options[trkIdx]["HighHitCommonWeapon"].includeSpecial)
+                    AddWeaponAtrributes(item,options[trkIdx]["HighHitCommonWeapon"].includeAtrributes,options[trkIdx]["HighHitCommonWeapon"].includeHit)
+                    ItemAppendVisibilityData( options[trkIdx]["HighHitCommonWeapon"], item, trkIdx )
+                -- Show Claire's Deal 5 items
             elseif options[trkIdx].ClairesDeal.enabled and clairesDealLoaded and lib_claires_deal.IsClairesDealItem(item) then
                 ItemAppendVisibilityData( options[trkIdx]["ClairesDeal"], item, trkIdx )
             elseif item.weapon.stats[6] < options[trkIdx].HighHitCommonWeapon.HitMin then
